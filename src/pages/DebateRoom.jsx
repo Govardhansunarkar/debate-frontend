@@ -1,0 +1,468 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { endDebate } from "../services/api";
+import { socket } from "../services/socket";
+import VideoStream from "../components/VideoStream";
+import AdvancedSpeechRecognition from "../components/AdvancedSpeechRecognition";
+import { trackDebateMetrics, prepareDebateTranscript } from "../services/debateAnalysis";
+
+export default function DebateRoom() {
+  const { debateId } = useParams();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [timer, setTimer] = useState(300);
+  const [isActive, setIsActive] = useState(false);
+  const [handRaised, setHandRaised] = useState(false);
+  const [players, setPlayers] = useState([]);
+  const [topic, setTopic] = useState("AI and the Future");
+  const [isAIDebate, setIsAIDebate] = useState(false);
+  const [roomType, setRoomType] = useState('user-only');  // Track room type
+  const [speeches, setSpeeches] = useState([]); // Track all speeches
+  const [debateMetrics, setDebateMetrics] = useState(null); // Debate stats
+
+  useEffect(() => {
+    // Check if this is an AI debate
+    const params = new URLSearchParams(window.location.search);
+    const isAI = params.get('ai') === 'true';
+    setIsAIDebate(isAI);
+    
+    // Set room type based on URL parameter
+    if (isAI) {
+      setRoomType('ai');
+    }
+
+    socket.emit("join-debate", {
+      debateId,
+      userId: localStorage.getItem("userId"),
+      playerName: localStorage.getItem("playerName"),
+      roomType: isAI ? 'ai' : 'user-only'
+    });
+
+    socket.on("receive-message", (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+
+    socket.on("player-joined", (data) => {
+      // Update players list with new participant
+      setPlayers((prev) => {
+        const exists = prev.some(p => p.userId === data.userId);
+        if (!exists) {
+          return [...prev, data];
+        }
+        return prev;
+      });
+      console.log(`${data.playerName} joined. Total participants: ${data.totalParticipants}`);
+    });
+
+    socket.on("hand-raised", (data) => {
+      console.log(`${data.playerName} raised their hand`);
+    });
+
+    socket.on("timer-updated", (data) => {
+      setTimer(data.timeRemaining);
+    });
+
+    socket.on("debate-ended", () => {
+      handleEndDebate();
+    });
+
+    socket.on("player-disconnected", (data) => {
+      // Remove player from list
+      setPlayers((prev) =>
+        prev.filter((p) => p.userId !== data.userId)
+      );
+      // Show notification
+      console.log(data.message);
+    });
+
+    return () => {
+      socket.off("receive-message");
+      socket.off("player-joined");
+      socket.off("hand-raised");
+      socket.off("timer-updated");
+      socket.off("debate-ended");
+      socket.off("player-disconnected");
+    };
+  }, [debateId]);
+
+  useEffect(() => {
+    console.log('[DebateRoom Timer Effect] isActive:', isActive, 'timer:', timer);
+    
+    let interval;
+    
+    // Start countdown only when debate is active
+    if (isActive && timer > 0) {
+      console.log('[DebateRoom Timer] Starting countdown from', timer);
+      interval = setInterval(() => {
+        setTimer((prev) => {
+          const newTime = prev - 1;
+          console.log('[DebateRoom Timer] Decreased to:', newTime);
+          
+          // Emit timer update to server
+          socket.emit("timer-update", { debateId, timeRemaining: newTime });
+          
+          // If time reaches 0, end the debate
+          if (newTime === 0) {
+            console.log('[DebateRoom Timer] Time is up!');
+            // We'll handle this outside to avoid stale closure
+          }
+          
+          return newTime;
+        });
+      }, 1000);
+    }
+    
+    // Cleanup interval on unmount or when isActive changes
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+        console.log('[DebateRoom Timer] Cleared interval');
+      }
+    };
+  }, [isActive, debateId]);
+
+  // Separate effect to handle when timer hits 0
+  useEffect(() => {
+    console.log('[DebateRoom End Timer Effect] timer:', timer, 'isActive:', isActive);
+    if (timer === 0 && isActive) {
+      console.log('[DebateRoom End Timer] Time is up! Calling handleEndDebate');
+      handleEndDebate();
+    }
+  }, [timer, isActive]);
+
+  const handleStart = () => {
+    console.log('[DebateRoom] Starting debate');
+    setIsActive(true);
+    setSpeeches([]); // Reset speeches when debate starts
+    setDebateMetrics(null);
+    console.log('[DebateRoom] Debate started - isActive set to true, speeches reset');
+  };
+
+  const handleTranscript = (transcriptData) => {
+    console.log('[DebateRoom] handleTranscript called with:', transcriptData);
+    
+    // Add speech to list
+    setSpeeches((prevSpeeches) => {
+      const updatedSpeeches = [...prevSpeeches, transcriptData];
+      console.log('[DebateRoom] Updated speeches count:', updatedSpeeches.length);
+      console.log('[DebateRoom] Current speeches:', updatedSpeeches);
+      
+      // Update metrics
+      const metrics = trackDebateMetrics(updatedSpeeches);
+      console.log('[DebateRoom] Updated metrics:', metrics);
+      setDebateMetrics(metrics);
+      
+      return updatedSpeeches;
+    });
+
+    // Broadcast speech to other players
+    socket.emit("send-message", {
+      debateId,
+      userId: localStorage.getItem("userId"),
+      playerName: localStorage.getItem("playerName"),
+      text: `🎤 ${transcriptData.text}`,
+    });
+  };
+
+  const handleSendMessage = () => {
+    if (input.trim() && socket) {
+      socket.emit("send-message", {
+        debateId,
+        userId: localStorage.getItem("userId"),
+        playerName: localStorage.getItem("playerName"),
+        text: input,
+      });
+      setInput("");
+    }
+  };
+
+  const handleRaiseHand = () => {
+    if (socket) {
+      if (handRaised) {
+        socket.emit("lower-hand", {
+          debateId,
+          userId: localStorage.getItem("userId"),
+          playerName: localStorage.getItem("playerName"),
+        });
+      } else {
+        socket.emit("raise-hand", {
+          debateId,
+          userId: localStorage.getItem("userId"),
+          playerName: localStorage.getItem("playerName"),
+        });
+      }
+      setHandRaised(!handRaised);
+    }
+  };
+
+  const handleEndDebate = async () => {
+    console.log('[DebateRoom] handleEndDebate called');
+    setIsActive(false);
+    
+    console.log('[DebateRoom] Ending debate. Speeches:', speeches);
+    console.log('[DebateRoom] Metrics:', debateMetrics);
+    
+    // Save speeches and metrics for result page
+    if (speeches && speeches.length > 0) {
+      localStorage.setItem(`speeches_${debateId}`, JSON.stringify(speeches));
+      console.log(`[DebateRoom] Saved ${speeches.length} speeches to localStorage`);
+    } else {
+      console.warn('[DebateRoom] No speeches recorded!');
+    }
+    
+    if (debateMetrics) {
+      localStorage.setItem(`debateMetrics_${debateId}`, JSON.stringify(debateMetrics));
+    }
+    
+    localStorage.setItem(`topic_${debateId}`, topic);
+    
+    // Call backend to end debate (only for backend debates, not local/demo debates)
+    const isLocalDebate = debateId && debateId.startsWith('debate_');
+    if (debateId && !isLocalDebate) {
+      console.log('[DebateRoom] Ending backend debate:', debateId);
+      await endDebate(debateId);
+    } else if (isLocalDebate) {
+      console.log('[DebateRoom] Skipping backend call for local debate');
+    }
+    
+    // Navigate to results page
+    navigate(`/results/${debateId}`);
+  };
+
+  const handleLeaveDebate = () => {
+    const confirmLeave = confirm(
+      "Are you sure you want to leave this debate? You won't be able to rejoin."
+    );
+
+    if (confirmLeave) {
+      // Notify other players
+      socket.emit("player-left", {
+        debateId,
+        userId: localStorage.getItem("userId"),
+        playerName: localStorage.getItem("playerName"),
+      });
+
+      // Navigate back to home
+      navigate("/");
+    }
+  };
+
+  const minutes = Math.floor(timer / 60);
+  const seconds = timer % 60;
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-3">
+      <div className="max-w-5xl mx-auto">
+        {/* Header with Topic */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg mb-3">
+          <h2 className="text-xl font-bold">📌 {topic}</h2>
+          <p className="text-white/80 text-sm mt-1">
+            {isAIDebate ? "Debating against AI" : "Live Debate with Players"}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Video Section - Main*/}
+          <div className="lg:col-span-2">
+            {/* Timer */}
+            <div className="text-center mb-3 bg-white p-3 rounded-lg shadow">
+              <p className="text-4xl font-bold text-blue-600">
+                {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
+              </p>
+              <p className="text-gray-600 text-sm mt-1">⏱️ Time Remaining</p>
+            </div>
+
+            {/* Video Stream Component */}
+            <VideoStream
+              debateId={debateId}
+              userId={localStorage.getItem("userId")}
+              playerName={localStorage.getItem("playerName")}
+              isAIDebate={isAIDebate}
+              participants={players}
+            />
+
+            {/* Advanced Speech Recognition Component */}
+            <AdvancedSpeechRecognition
+              isActive={isActive}
+              debateId={debateId}
+              topic={topic}
+              onSpeechEnd={handleTranscript}
+              socket={socket}
+              roomType={roomType}
+            />
+
+            {/* Control Buttons */}
+            <div className="flex gap-2 mt-3 flex-wrap">
+              {!isActive ? (
+                <button
+                  onClick={handleStart}
+                  className="flex-1 min-w-28 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold text-sm transition"
+                >
+                  🎬 Start Debate
+                </button>
+              ) : (
+                <button
+                  onClick={handleEndDebate}
+                  className="flex-1 min-w-28 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold text-sm transition"
+                >
+                  🛑 End Debate
+                </button>
+              )}
+              <button
+                onClick={handleRaiseHand}
+                className={`flex-1 min-w-28 py-2 rounded-lg font-semibold text-white transition text-sm ${
+                  handRaised
+                    ? "bg-orange-500 hover:bg-orange-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                }`}
+              >
+                <span>{handRaised ? "👋 Lower Hand" : "✋ Raise Hand"}</span>
+              </button>
+              <button
+                onClick={handleLeaveDebate}
+                className="flex-1 min-w-28 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg font-semibold text-sm transition"
+              >
+                🚪 Leave Debate
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="bg-white rounded-lg shadow p-3 h-48 overflow-y-auto mt-3">
+              <h3 className="font-bold mb-2 text-sm">💬 Debate Chat</h3>
+              {messages.length === 0 ? (
+                <p className="text-center text-gray-500">No messages yet. Start the debate!</p>
+              ) : (
+                messages.map((msg, idx) => (
+                  <div key={idx} className="mb-4 border-l-4 border-blue-500 pl-4 py-2">
+                    <p className="text-sm font-semibold text-gray-600">{msg.playerName}</p>
+                    <p className="text-gray-800 mt-1">{msg.text}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Message Input */}
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                disabled={!isActive}
+                placeholder={
+                  isActive ? "Type your argument..." : "Start the debate to send messages"
+                }
+                className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!isActive}
+                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 text-sm rounded-lg font-semibold transition"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar - Players & Info */}
+          <div className="lg:col-span-1">
+            {/* Players List */}
+            <div className="bg-white rounded-lg shadow p-3 mb-3 sticky top-6">
+              <h3 className="font-semibold text-sm mb-2">👥 Participants</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {/* You */}
+                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border-2 border-green-200">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {localStorage.getItem("playerName")?.[0] || "?"}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">You</p>
+                    <p className="text-xs text-gray-600">
+                      {localStorage.getItem("playerName")}
+                    </p>
+                  </div>
+                  <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded">
+                    Online
+                  </span>
+                </div>
+
+                {/* Other Players / AI Opponent */}
+                {isAIDebate ? (
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      🤖
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">AI Opponent</p>
+                      <p className="text-xs text-gray-600">Artificial Intelligence</p>
+                    </div>
+                    <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                      Online
+                    </span>
+                  </div>
+                ) : players.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Waiting for other players...
+                  </p>
+                ) : (
+                  players.map((player, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {player.playerName?.[0] || "?"}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold">{player.playerName || "Player"}</p>
+                        <p className="text-xs text-gray-600">Participant</p>
+                      </div>
+                      <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                        Online
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Debate Status */}
+            <div className="bg-white rounded-lg shadow p-3 mb-3">
+              <h3 className="font-semibold text-sm mb-2">📊 Status</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className={` font-semibold ${isActive ? "text-green-600" : "text-orange-600"}`}>
+                    {isActive ? "🔴 Live" : "⏸️ Paused"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Players:</span>
+                  <span className="font-semibold">{players.length + 1}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Messages:</span>
+                  <span className="font-semibold">{messages.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hand Raised:</span>
+                  <span className="font-semibold">{handRaised ? "✅ Yes" : "❌ No"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Leave Debate Button - Sidebar */}
+            <button
+              onClick={handleLeaveDebate}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+            >
+              <span>🚪</span>
+              <span>Leave Debate</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

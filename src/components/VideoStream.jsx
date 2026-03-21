@@ -1,0 +1,364 @@
+import { useEffect, useRef, useState } from "react";
+import Peer from "peerjs";
+import { socket } from "../services/socket";
+
+export default function VideoStream({ debateId, userId, playerName, isAIDebate = false, participants = [] }) {
+  const localVideoRef = useRef(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [peers, setPeers] = useState({}); // { userId: { peerConnection, stream, videoRef } }
+  const [remoteStreams, setRemoteStreams] = useState({}); // { userId: { stream, playerName } }
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [error, setError] = useState(null);
+  const [connectedUsers, setConnectedUsers] = useState(new Set());
+  const peerRef = useRef(null);
+  const participantNamesRef = useRef({}); // Track participant names
+
+  // Initialize PeerJS
+  useEffect(() => {
+    // Create a unique peer ID for this user
+    const peerId = `${debateId}_${userId}`;
+    
+    // Get the PeerJS server configuration
+    // Uses environment variable or defaults to localhost:9000
+    const peerHost = import.meta.env.VITE_PEERJS_HOST || 'localhost';
+    const peerPort = import.meta.env.VITE_PEERJS_PORT ? parseInt(import.meta.env.VITE_PEERJS_PORT) : 9000;
+    
+    const peer = new Peer(peerId, {
+      host: peerHost,
+      port: peerPort,
+      path: "/peerjs",
+      debug: 0, // Set to 0 to suppress verbose logging
+      allow_discovery: false,
+    });
+
+    peer.on("error", (err) => {
+      console.warn("PeerJS Error:", err.type, err);
+      if (err.type === 'unavailable-id') {
+        console.log("Peer ID already in use, waiting for fresh connection...");
+      }
+    });
+
+    peer.on("open", () => {
+      console.log("PeerJS connected:", peerId);
+    });
+
+    peerRef.current = peer;
+
+    return () => {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+      }
+    };
+  }, [debateId, userId]);
+
+  // Get local camera/microphone
+  useEffect(() => {
+    const setupLocalStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true,
+        });
+        setLocalStream(stream);
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        // Signal to other players that this user is ready
+        socket.emit("video-ready", { debateId, userId, playerName });
+      } catch (err) {
+        console.error("Error accessing camera/microphone:", err);
+        setError("Cannot access camera or microphone. Please check permissions.");
+      }
+    };
+
+    setupLocalStream();
+
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [debateId, userId, playerName]);
+
+  // Handle incoming video-ready signal from other players
+  useEffect(() => {
+    const handleVideoReady = (data) => {
+      console.log(`Video ready from ${data.playerName} (${data.userId})`);
+      
+      // Store participant name
+      participantNamesRef.current[data.userId] = data.playerName;
+      
+      if (data.userId !== userId && !connectedUsers.has(data.userId) && localStream && peerRef.current) {
+        // Don't immediately connect, wait a bit to allow multiple users to signal readiness
+        setTimeout(() => {
+          if (!connectedUsers.has(data.userId) && peerRef.current && localStream) {
+            makePeerConnection(data.userId, data);
+          }
+        }, 500);
+      }
+    };
+
+    socket.on("video-ready", handleVideoReady);
+
+    return () => {
+      socket.off("video-ready", handleVideoReady);
+    };
+  }, [connectedUsers, userId, localStream]);
+
+  // Create peer connection
+  const makePeerConnection = (remoteUserId, remoteData) => {
+    if (!localStream || !peerRef.current) return;
+
+    try {
+      const peerId = `${debateId}_${remoteUserId}`;
+      const playerNameForConnection = participantNamesRef.current[remoteUserId] || "Participant";
+      
+      const call = peerRef.current.call(peerId, localStream, {
+        metadata: { playerName: playerName }
+      });
+
+      call.on("stream", (remoteStream) => {
+        console.log("Received remote stream from:", remoteUserId);
+        setRemoteStreams((prev) => ({ 
+          ...prev, 
+          [remoteUserId]: { 
+            stream: remoteStream, 
+            playerName: playerNameForConnection 
+          } 
+        }));
+        setConnectedUsers((prev) => new Set([...prev, remoteUserId]));
+      });
+
+      call.on("close", () => {
+        console.log("Connection closed with:", remoteUserId);
+        setRemoteStreams((prev) => {
+          const updated = { ...prev };
+          delete updated[remoteUserId];
+          return updated;
+        });
+        setConnectedUsers((prev) => {
+          const updated = new Set(prev);
+          updated.delete(remoteUserId);
+          return updated;
+        });
+        setPeers((prev) => {
+          const updated = { ...prev };
+          delete updated[remoteUserId];
+          return updated;
+        });
+      });
+
+      call.on("error", (err) => {
+        console.error(`Error with peer ${remoteUserId}:`, err);
+        setRemoteStreams((prev) => {
+          const updated = { ...prev };
+          delete updated[remoteUserId];
+          return updated;
+        });
+      });
+
+      setPeers((prev) => ({ ...prev, [remoteUserId]: call }));
+    } catch (err) {
+      console.error("Error making peer connection:", err);
+    }
+  };
+
+  // Handle incoming calls
+  useEffect(() => {
+    if (!peerRef.current || !localStream) return;
+
+    const handleCall = (call) => {
+      const remoteUserId = call.peer.split("_")[1];
+      const playerNameForConnection = participantNamesRef.current[remoteUserId] || "Participant";
+      
+      console.log(`Incoming call from ${remoteUserId}`);
+      
+      call.answer(localStream);
+
+      call.on("stream", (remoteStream) => {
+        console.log("Received stream from answering call:", remoteUserId);
+        setRemoteStreams((prev) => ({ 
+          ...prev, 
+          [remoteUserId]: { 
+            stream: remoteStream, 
+            playerName: playerNameForConnection 
+          } 
+        }));
+        setConnectedUsers((prev) => new Set([...prev, remoteUserId]));
+      });
+
+      call.on("close", () => {
+        console.log("Answered call closed with:", remoteUserId);
+        setRemoteStreams((prev) => {
+          const updated = { ...prev };
+          delete updated[remoteUserId];
+          return updated;
+        });
+        setConnectedUsers((prev) => {
+          const updated = new Set(prev);
+          updated.delete(remoteUserId);
+          return updated;
+        });
+      });
+
+      call.on("error", (err) => {
+        console.error(`Error in answered call with ${remoteUserId}:`, err);
+        setRemoteStreams((prev) => {
+          const updated = { ...prev };
+          delete updated[remoteUserId];
+          return updated;
+        });
+      });
+
+      setPeers((prev) => ({ ...prev, [remoteUserId]: call }));
+    };
+
+    peerRef.current.on("call", handleCall);
+
+    return () => {
+      if (peerRef.current) {
+        peerRef.current.off("call", handleCall);
+      }
+    };
+  }, [localStream, playerName]);
+
+  const toggleCamera = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsCameraOn(!isCameraOn);
+    }
+  };
+
+  const toggleMicrophone = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsMicOn(!isMicOn);
+    }
+  };
+
+  // Calculate grid columns based on number of remote streams
+  const remoteCount = Object.keys(remoteStreams).length;
+  let gridClass = "grid-cols-1";
+  if (remoteCount >= 2) gridClass = "md:grid-cols-2";
+  if (remoteCount >= 3) gridClass = "lg:grid-cols-3";
+  if (remoteCount >= 4) gridClass = "grid-cols-2 lg:grid-cols-2";
+
+  return (
+    <div className="w-full">
+      {error && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+          ⚠️ {error} - Local streaming is still working.
+        </div>
+      )}
+
+      {/* Local Video */}
+      <div className="mb-3 bg-black rounded-lg overflow-hidden shadow-lg">
+        <div className="relative w-full aspect-video bg-gray-900 h-64">
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
+            📹 You ({playerName})
+          </div>
+          <div className="absolute top-2 right-2 flex gap-1">
+            <button
+              onClick={toggleCamera}
+              className={`px-2 py-1 rounded text-sm font-semibold transition ${
+                isCameraOn
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "bg-red-500 hover:bg-red-600"
+              } text-white`}
+              title={isCameraOn ? "Turn off camera" : "Turn on camera"}
+            >
+              {isCameraOn ? "📹" : "🚫"}
+            </button>
+            <button
+              onClick={toggleMicrophone}
+              className={`px-2 py-1 rounded text-sm font-semibold transition ${
+                isMicOn ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
+              } text-white`}
+              title={isMicOn ? "Mute microphone" : "Unmute microphone"}
+            >
+              {isMicOn ? "🎤" : "🔇"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Remote Videos Grid */}
+      {remoteCount > 0 && (
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold mb-2 text-gray-800">
+            🎥 Debate Participants ({remoteCount})
+          </h3>
+          <div className={`grid ${gridClass} gap-2`}>
+            {Object.entries(remoteStreams).map(([remoteUserId, data]) => (
+              <RemoteVideoPlayer 
+                key={remoteUserId} 
+                stream={data.stream} 
+                userId={remoteUserId}
+                playerName={data.playerName}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AI Avatar (if AI debate) */}
+      {isAIDebate && remoteCount === 0 && (
+        <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-4 text-center text-white shadow-lg">
+          <div className="text-6xl mb-2 animate-bounce">🤖</div>
+          <h3 className="text-lg font-bold">AI Opponent</h3>
+          <p className="mt-1 text-white/80 text-sm">Listening and analyzing your arguments...</p>
+        </div>
+      )}
+
+      {/* Waiting Message */}
+      {!isAIDebate && remoteCount === 0 && (
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center shadow">
+          <p className="text-blue-800 font-semibold text-sm">⏳ Waiting for other participants to join...</p>
+          <p className="text-blue-600 text-xs mt-1">Your camera and microphone are streaming and ready!</p>
+          <p className="text-blue-500 text-xs mt-1">Connected users: {connectedUsers.size}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Remote video player component
+function RemoteVideoPlayer({ stream, userId, playerName = "Participant" }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div className="bg-black rounded-lg overflow-hidden shadow-lg">
+      <div className="relative w-full aspect-video bg-gray-900">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-sm font-semibold">
+          📹 {playerName}
+        </div>
+      </div>
+    </div>
+  );
+}
