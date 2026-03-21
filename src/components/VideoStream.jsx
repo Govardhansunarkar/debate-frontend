@@ -26,17 +26,22 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       ? 'ai-debate-arena-backend-9zur.onrender.com'
       : (import.meta.env.VITE_PEERJS_HOST || 'localhost');
     const peerPort = isProduction 
-      ? 443
+      ? 9000  // Use PeerJS port directly
       : (import.meta.env.VITE_PEERJS_PORT ? parseInt(import.meta.env.VITE_PEERJS_PORT) : 9000);
-    const peerUseSsl = isProduction ? true : false;
+    const peerUseSsl = isProduction ? true : false;  // Use SSL for HTTPS domain
     
     const peer = new Peer(peerId, {
       host: peerHost,
       port: peerPort,
       path: "/peerjs",
       secure: peerUseSsl,
-      debug: 0, // Set to 0 to suppress verbose logging
+      debug: 2, // Show more debug info for troubleshooting
       allow_discovery: false,
+      config: {
+        iceServers: [
+          { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+        ]
+      }
     });
 
     peer.on("error", (err) => {

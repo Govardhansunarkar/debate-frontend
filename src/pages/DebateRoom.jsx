@@ -39,20 +39,38 @@ export default function DebateRoom() {
       roomType: isAI ? 'ai' : 'user-only'
     });
 
+    // When I first join debate - get all participants already in room
+    socket.on("debate-joined", (data) => {
+      console.log("Debate joined successfully. Participants:", data.participants);
+      if (data.participants && data.participants.length > 0) {
+        // Only add if not already present
+        setPlayers((prev) => {
+          const ids = new Set(prev.map(p => p.userId));
+          const newParticipants = data.participants.filter(p => !ids.has(p.userId));
+          return [...prev, ...newParticipants];
+        });
+      }
+    });
+
     socket.on("receive-message", (data) => {
       setMessages((prev) => [...prev, data]);
     });
 
     socket.on("player-joined", (data) => {
-      // Update players list with new participant
+      // Update players list with all participants from this event
       setPlayers((prev) => {
+        if (data.participants) {
+          // Replace with fresh list from server to ensure sync
+          return data.participants;
+        }
+        // Fallback if participants not included
         const exists = prev.some(p => p.userId === data.userId);
         if (!exists) {
-          return [...prev, data];
+          return [...prev, { userId: data.userId, playerName: data.playerName }];
         }
         return prev;
       });
-      console.log(`${data.playerName} joined. Total participants: ${data.totalParticipants}`);
+      console.log(`${data.playerName} joined. Total: ${data.totalParticipants}`, data.participants);
     });
 
     socket.on("hand-raised", (data) => {
