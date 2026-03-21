@@ -19,15 +19,22 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     // Create a unique peer ID for this user
     const peerId = `${debateId}_${userId}`;
     
-    // Get the PeerJS server configuration
-    // Uses environment variable or defaults to localhost:9000
-    const peerHost = import.meta.env.VITE_PEERJS_HOST || 'localhost';
-    const peerPort = import.meta.env.VITE_PEERJS_PORT ? parseInt(import.meta.env.VITE_PEERJS_PORT) : 9000;
+    // Get PeerJS server from Render backend (uses same server as Express)
+    // For production, use Render URL; for development use localhost
+    const isProduction = import.meta.env.MODE === 'production';
+    const peerHost = isProduction 
+      ? 'ai-debate-arena-backend-9zur.onrender.com'
+      : (import.meta.env.VITE_PEERJS_HOST || 'localhost');
+    const peerPort = isProduction 
+      ? 443
+      : (import.meta.env.VITE_PEERJS_PORT ? parseInt(import.meta.env.VITE_PEERJS_PORT) : 9000);
+    const peerUseSsl = isProduction ? true : false;
     
     const peer = new Peer(peerId, {
       host: peerHost,
       port: peerPort,
       path: "/peerjs",
+      secure: peerUseSsl,
       debug: 0, // Set to 0 to suppress verbose logging
       allow_discovery: false,
     });
