@@ -272,12 +272,21 @@ export default function DebateRoom() {
   return (
     <div className="min-h-screen bg-gray-50 p-3">
       <div className="max-w-5xl mx-auto">
-        {/* Header with Topic */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 rounded-lg mb-3">
-          <h2 className="text-xl font-bold">📌 {topic}</h2>
-          <p className="text-white/80 text-sm mt-1">
-            {isAIDebate ? "Debating against AI" : "Live Debate with Players"}
-          </p>
+        {/* Header with Topic - PROMINENT IN AI DEBATE */}
+        <div className={`${isAIDebate ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} text-white p-4 rounded-lg mb-3 shadow-lg`}>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className={`${isAIDebate ? 'text-2xl' : 'text-xl'} font-bold`}>
+                📌 {topic}
+              </h2>
+              <p className="text-white/80 text-sm mt-1">
+                {isAIDebate ? "🤖 Debating against AI Opponent" : "👥 Live Debate with Players"}
+              </p>
+            </div>
+            {isAIDebate && (
+              <div className="text-3xl ml-4">🤖</div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -291,14 +300,16 @@ export default function DebateRoom() {
               <p className="text-gray-600 text-sm mt-1">⏱️ Time Remaining</p>
             </div>
 
-            {/* Video Stream Component */}
-            <VideoStream
-              debateId={debateId}
-              userId={localStorage.getItem("userId")}
-              playerName={localStorage.getItem("playerName")}
-              isAIDebate={isAIDebate}
-              participants={players}
-            />
+            {/* Video Stream Component - HIDDEN IN AI DEBATE */}
+            {!isAIDebate && (
+              <VideoStream
+                debateId={debateId}
+                userId={localStorage.getItem("userId")}
+                playerName={localStorage.getItem("playerName")}
+                isAIDebate={isAIDebate}
+                participants={players}
+              />
+            )}
 
             {/* Advanced Speech Recognition Component */}
             <AdvancedSpeechRecognition
@@ -327,16 +338,18 @@ export default function DebateRoom() {
                   🛑 End Debate
                 </button>
               )}
-              <button
-                onClick={handleRaiseHand}
-                className={`flex-1 min-w-28 py-2 rounded-lg font-semibold text-white transition text-sm ${
-                  handRaised
-                    ? "bg-orange-500 hover:bg-orange-600"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                <span>{handRaised ? "👋 Lower Hand" : "✋ Raise Hand"}</span>
-              </button>
+              {!isAIDebate && (
+                <button
+                  onClick={handleRaiseHand}
+                  className={`flex-1 min-w-28 py-2 rounded-lg font-semibold text-white transition text-sm ${
+                    handRaised
+                      ? "bg-orange-500 hover:bg-orange-600"
+                      : "bg-blue-500 hover:bg-blue-600"
+                  }`}
+                >
+                  <span>{handRaised ? "👋 Lower Hand" : "✋ Raise Hand"}</span>
+                </button>
+              )}
               <button
                 onClick={handleLeaveDebate}
                 className="flex-1 min-w-28 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg font-semibold text-sm transition"
