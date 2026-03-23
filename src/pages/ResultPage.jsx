@@ -114,34 +114,34 @@ export default function ResultPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Winner Banner */}
-        <div className="bg-yellow-400 text-center py-6 rounded-lg mb-6 shadow-lg">
-          <h1 className="text-4xl font-bold">🏆 Debate Results</h1>
-          <p className="text-2xl mt-2">
-            Winner: <span className="font-bold">{winner}</span>
+        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-center py-8 px-6 rounded-2xl mb-6 shadow-xl border-4 border-yellow-600">
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-800">🏆 Debate Results</h1>
+          <p className="text-2xl md:text-3xl mt-4 text-gray-800">
+            Winner: <span className="font-bold text-yellow-700 bg-yellow-100 px-4 py-2 rounded-lg inline-block">{winner}</span>
           </p>
         </div>
 
         {/* Scores */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {Object.entries(playerScores).map(([player, score]) => (
             <div
               key={player}
-              className={`p-6 rounded-lg text-white font-semibold text-center ${
-                player === winner ? "bg-green-500" : "bg-blue-500"
+              className={`p-8 rounded-2xl text-white font-semibold text-center shadow-xl border-4 transform hover:scale-105 transition ${
+                player === winner ? "bg-gradient-to-br from-green-500 to-green-600 border-green-700" : "bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700"
               }`}
             >
-              <div className="text-xl">{player}</div>
-              <div className="text-4xl mt-2">{score.toFixed(1)}</div>
-              <div className="text-sm mt-2">points</div>
+              <div className="text-2xl md:text-3xl font-bold mb-2">{player === winner ? "🥇" : "🥈"} {player}</div>
+              <div className="text-5xl md:text-6xl font-bold mt-3">{score.toFixed(1)}</div>
+              <div className="text-base md:text-lg mt-3 opacity-90">points</div>
             </div>
           ))}
         </div>
 
         {/* AI Feedback Report */}
-        <div className="bg-white rounded-lg p-8 mb-6 shadow-lg">
-          <h2 className="text-3xl font-bold mb-6">🤖 AI-Powered Feedback</h2>
+        <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
+          <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Feedback</h2>
           {fetchingFeedback ? (
             <div className="text-center py-8">
               <p className="text-gray-600">🔄 Analyzing your debate speech...</p>

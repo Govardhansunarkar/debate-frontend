@@ -270,38 +270,39 @@ export default function DebateRoom() {
   const seconds = timer % 60;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Header with Topic - PROMINENT IN AI DEBATE */}
-        <div className={`${isAIDebate ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} text-white p-4 rounded-lg mb-3 shadow-lg`}>
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h2 className={`${isAIDebate ? 'text-2xl' : 'text-xl'} font-bold`}>
+        <div className={`${isAIDebate ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} text-white p-4 md:p-6 rounded-xl mb-4 shadow-lg border-2 border-white/20`}>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className={`${isAIDebate ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl'} font-bold truncate`}>
                 📌 {topic}
               </h2>
-              <p className="text-white/80 text-sm mt-1">
+              <p className="text-white/90 text-xs md:text-sm mt-2">
                 {isAIDebate ? "🤖 Debating against AI Opponent" : "👥 Live Debate with Players"}
               </p>
             </div>
             {isAIDebate && (
-              <div className="text-3xl ml-4">🤖</div>
+              <div className="text-4xl md:text-5xl">🤖</div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Video Section - Main*/}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             {/* Timer */}
-            <div className="text-center mb-3 bg-white p-3 rounded-lg shadow">
-              <p className="text-4xl font-bold text-blue-600">
+            <div className="text-center mb-4 bg-white p-4 rounded-xl shadow-md border-2 border-blue-200">
+              <p className="text-5xl md:text-6xl font-bold text-blue-600">
                 {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
               </p>
-              <p className="text-gray-600 text-sm mt-1">⏱️ Time Remaining</p>
+              <p className="text-gray-600 text-xs md:text-sm mt-2 font-semibold">⏱️ Time Remaining</p>
             </div>
 
             {/* Video Stream Component - HIDDEN IN AI DEBATE */}
             {!isAIDebate && (
+              <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
               <VideoStream
                 debateId={debateId}
                 userId={localStorage.getItem("userId")}
@@ -309,9 +310,11 @@ export default function DebateRoom() {
                 isAIDebate={isAIDebate}
                 participants={players}
               />
+              </div>
             )}
 
             {/* Advanced Speech Recognition Component */}
+            <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
             <AdvancedSpeechRecognition
               isActive={isActive}
               debateId={debateId}
@@ -320,9 +323,10 @@ export default function DebateRoom() {
               socket={socket}
               roomType={roomType}
             />
+            </div>
 
             {/* Control Buttons */}
-            <div className="flex gap-2 mt-3 flex-wrap">
+            <div className="flex gap-3 flex-wrap mb-4">
               {!isActive ? (
                 <button
                   onClick={handleStart}

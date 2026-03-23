@@ -24,60 +24,65 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full">
-        <h1 className="text-4xl font-bold text-center mb-2 text-gray-800">
-          🎤 AI Debate Arena
-        </h1>
-        <p className="text-center text-gray-600 mb-8">
-          Master communication & critical thinking through structured debates with real opponents and AI analysis
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-3xl w-full border-4 border-white/30">
+        <div className="text-center mb-8">
+          <h1 className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-3">
+            🎤 AI Debate Arena
+          </h1>
+          <p className="text-gray-700 text-base md:text-lg leading-relaxed">
+            Master communication & critical thinking through structured debates with real opponents and AI analysis
+          </p>
+        </div>
 
-        <div className="mb-6">
+        <div className="mb-8">
+          <label className="block text-gray-700 font-semibold mb-3">Enter your name</label>
           <input
             type="text"
-            placeholder="Enter your name..."
+            placeholder="Type your name..."
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg shadow-md transition"
             onKeyPress={(e) => e.key === 'Enter' && handleStart('random')}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           <button
             onClick={() => handleStart('random')}
             disabled={!playerName.trim()}
-            className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold transition flex flex-col items-center gap-2"
+            className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-5 px-6 rounded-xl font-semibold transition transform hover:scale-105 active:scale-95 flex flex-col items-center gap-3 shadow-lg border-2 border-blue-700/50"
           >
-            <span className="text-2xl">🎲</span>
-            <span>Random Match</span>
-            <span className="text-xs">Auto-matchmaking</span>
+            <span className="text-4xl">🎲</span>
+            <span className="text-lg">Random Match</span>
+            <span className="text-xs opacity-80">Auto-matchmaking</span>
           </button>
 
           <button
             onClick={() => handleStart('private')}
             disabled={!playerName.trim()}
-            className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold transition flex flex-col items-center gap-2"
+            className="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-5 px-6 rounded-xl font-semibold transition transform hover:scale-105 active:scale-95 flex flex-col items-center gap-3 shadow-lg border-2 border-green-700/50"
           >
-            <span className="text-2xl">🏠</span>
-            <span>Private Room</span>
-            <span className="text-xs">Invite friends</span>
+            <span className="text-4xl">🏛️</span>
+            <span className="text-lg">Private Room</span>
+            <span className="text-xs opacity-80">Invite friends</span>
           </button>
 
           <button
             onClick={() => handleStart('ai')}
             disabled={!playerName.trim()}
-            className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold transition flex flex-col items-center gap-2"
+            className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white py-5 px-6 rounded-xl font-semibold transition transform hover:scale-105 active:scale-95 flex flex-col items-center gap-3 shadow-lg border-2 border-purple-700/50"
           >
-            <span className="text-2xl">🤖</span>
-            <span>AI Debate</span>
-            <span className="text-xs">Practice mode</span>
+            <span className="text-4xl">🤖</span>
+            <span className="text-lg">AI Debate</span>
+            <span className="text-xs opacity-80">Practice mode</span>
           </button>
         </div>
 
-        <div className="mt-8 text-center text-sm text-gray-600">
-          <p>💪 Improve your debating skills | 🧠 Get AI-powered feedback | 🏆 Track your progress</p>
+        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+          <p className="text-center text-gray-800 font-semibold text-sm md:text-base">
+            💪 Improve your debating skills | 🧠 Get AI-powered feedback | 🏆 Track your progress
+          </p>
         </div>
       </div>
     </div>
