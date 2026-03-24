@@ -377,7 +377,7 @@ export default function DebateRoom() {
               </div>
             </div>
 
-            {/* Status Text */
+            {/* Status Text */}
             <div className="text-center mb-4">
               <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
               <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
