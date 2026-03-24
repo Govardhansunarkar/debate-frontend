@@ -163,8 +163,12 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         
         // Only get AI response if this is an AI debate room AND debate is still active
         if (roomType === 'ai' && isActive) {
-          console.log("[SpeechRecognition] AI Debate: Calling handleAIResponse to submit to API");
-          await handleAIResponse(userSpeech, updatedHistory);
+          console.log("[SpeechRecognition] AI Debate: Waiting 5 seconds before sending to LLM...");
+          // Wait 5 seconds to give user time to think before AI responds
+          setTimeout(async () => {
+            console.log("[SpeechRecognition] 5 seconds passed, now calling handleAIResponse...");
+            await handleAIResponse(userSpeech, updatedHistory);
+          }, 5000);
         } else if (roomType === 'ai' && !isActive) {
           console.warn("[SpeechRecognition] ⏱️ Debate timeout! Not requesting AI response");
         } else {
@@ -296,25 +300,64 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   // Start listening
   const handleStartListening = () => {
     if (!isActive) {
-      alert("Start the debate first!");
+      setSubmissionError("❌ Start the debate first!");
       return;
     }
 
     if (!recognitionRef.current) {
-      alert("Speech Recognition not available");
+      setSubmissionError("❌ Speech Recognition not available in your browser");
       return;
     }
 
+    console.log("[SpeechRecognition] 🎤 Checking microphone permissions...");
+    setSubmissionError(null);
+
     // Check for microphone permissions
     navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(() => {
-        console.log("[SpeechRecognition] Microphone permission granted");
+      .then((stream) => {
+        console.log("[SpeechRecognition] ✅ Microphone permission granted");
+        // Stop the permission check stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Now start speech recognition
         finalTranscriptRef.current = "";
+        setUserTranscript("");
+        setIsListening(true);
+        listeningStartTimeRef.current = Date.now();
+        
         recognitionRef.current.start();
+        console.log("[SpeechRecognition] 🎯 Started listening...");
       })
       .catch(error => {
-        console.error("[SpeechRecognition] Microphone permission denied:", error);
-        alert("Please allow microphone access to use speech recognition");
+        console.error("[SpeechRecognition] ❌ Microphone permission error:", error);
+        
+        let errorMessage = "🎤 Microphone Permission Error";
+        let errorDetail = "";
+        
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "❌ Permission Denied";
+          errorDetail = "Click on the 🔒 lock icon in your address bar and enable microphone access";
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = "❌ Microphone Not Found";
+          errorDetail = "Microphone is not connected or not detected by your browser";
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = "❌ Microphone In Use";
+          errorDetail = "Another application is using your microphone. Close it and try again.";
+        } else if (error.name === 'SecurityError') {
+          errorMessage = "❌ Security Error";
+          errorDetail = "This site is not allowed to access the microphone. Switch to HTTPS or check browser settings.";
+        } else {
+          errorDetail = error.message;
+        }
+        
+        setSubmissionError(`${errorMessage}\n\n${errorDetail}`);
+        setIsListening(false);
+        
+        console.error("[SpeechRecognition] Error details:", {
+          name: error.name,
+          message: error.message,
+          code: error.code
+        });
       });
   };
 

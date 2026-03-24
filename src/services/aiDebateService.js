@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Auto-detect API URL - localhost for dev, Render for production
 const API_URL = import.meta.env.MODE === 'development'
-  ? 'http://localhost:3001/api'
+  ? 'http://localhost:8000/api'
   : 'https://debate-backend-paro.onrender.com/api';
 
 console.log('[aiDebateService] Using API URL:', API_URL);
@@ -37,7 +37,8 @@ export const getAIResponse = async (userSpeech, topic, debateContext) => {
     const response = await axios.post(`${API_URL}/debates/ai-response`, requestPayload, {
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 20000  // 20 second timeout for AI response
     });
     
     console.log('[aiDebateService] Response received:', response.data);

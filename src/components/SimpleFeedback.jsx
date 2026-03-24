@@ -10,6 +10,36 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
     return <div className="text-center py-8">Loading feedback...</div>;
   }
 
+  // Handle error state
+  if (feedback?.success === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border-2 border-red-300">
+          <div className="text-center">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-red-600 mb-3">Could Not Load Feedback</h2>
+            <p className="text-gray-700 mb-4">{feedback?.userMessage || feedback?.error || 'An error occurred while loading your feedback'}</p>
+            <div className="bg-red-50 border border-red-300 rounded p-3 mb-6 text-sm text-red-700">
+              {feedback?.isTimeout ? '⏱️ Request timed out' : '🔗 Network error'}
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition"
+            >
+              🔄 Reload Page
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full mt-3 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg transition"
+            >
+              ← Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Get overall rating (0-10)
   const overallRating = Math.round(feedback.overall_score || 7);
   const stars = Math.min(5, Math.round(overallRating / 2));

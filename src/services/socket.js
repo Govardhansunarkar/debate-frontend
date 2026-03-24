@@ -2,7 +2,7 @@ import io from "socket.io-client";
 
 // Auto-detect server URL - localhost for dev, Render for production
 const SOCKET_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:3001' 
+  ? 'http://localhost:8000' 
   : 'https://debate-backend-paro.onrender.com';
 
 console.log('[socket.js] Connecting to:', SOCKET_URL);

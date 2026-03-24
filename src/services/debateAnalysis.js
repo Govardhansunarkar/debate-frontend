@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Use localhost for development, production URL for production
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:3001/api'
+  ? 'http://localhost:8000/api'
   : 'https://debate-backend-paro.onrender.com/api';
 
 // Format duration in seconds to MM:SS or Ss format
@@ -17,7 +17,7 @@ export const formatDuration = (seconds) => {
 export const getDebateFeedback = async (debateId, topic, speeches) => {
   try {
     const currentAPI_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:3001/api'
+      ? 'http://localhost:8000/api'
       : 'https://debate-backend-paro.onrender.com/api';
     
     console.log('[getDebateFeedback] 🚀 Requesting LLM analysis for:', {
@@ -44,10 +44,12 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
 
     console.log('[getDebateFeedback] 📝 Formatted speeches:', formattedSpeeches.length);
 
-    // Call the NVIDIA LLM-powered analysis endpoint
+    // Call the NVIDIA LLM-powered analysis endpoint with 45 second timeout
     const response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
       speeches: formattedSpeeches,
       topic: topic,
+    }, {
+      timeout: 45000  // 45 second timeout to allow backend processing
     });
 
     console.log('[getDebateFeedback] ✅ Response received:', {
@@ -83,9 +85,25 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
     }
   } catch (error) {
     console.error("[getDebateFeedback] ❌ Error getting LLM feedback:", error.message);
+    
+    // Log detailed error information for debugging
+    if (error.response) {
+      console.error("[getDebateFeedback] Response Status:", error.response.status);
+      console.error("[getDebateFeedback] Response Data:", error.response.data);
+    } else if (error.request) {
+      console.error("[getDebateFeedback] No response from server - Network issue:", error.request);
+    } else {
+      console.error("[getDebateFeedback] Error details:", error);
+    }
+    
     return {
       success: false,
       error: error.message,
+      isTimeout: error.code === 'ECONNABORTED',
+      statusCode: error.response?.status,
+      userMessage: error.code === 'ECONNABORTED' 
+        ? 'Feedback is taking longer than expected. Please try again.'
+        : 'Unable to load feedback. Please refresh and try again.'
     };
   }
 };
