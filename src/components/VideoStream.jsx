@@ -74,15 +74,35 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
   useEffect(() => {
     const setupLocalStream = async () => {
       try {
+        // First, check if permissions API is available
+        if (navigator.permissions) {
+          try {
+            const cameraPerms = await navigator.permissions.query({ name: 'camera' });
+            const micPerms = await navigator.permissions.query({ name: 'microphone' });
+            
+            if (cameraPerms.state === 'denied' || micPerms.state === 'denied') {
+              console.warn("🔒 Camera/Microphone permissions were previously denied");
+              console.warn("📍 Check browser settings → Privacy → Camera/Microphone");
+              setError("❌ Camera/Microphone permissions denied. Check browser settings and allow access.");
+              return;
+            }
+          } catch (e) {
+            console.log("Permissions API not fully supported, proceeding with getUserMedia");
+          }
+        }
+
+        console.log("🎥 Requesting camera/microphone access...");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: {
-            echoCancellation: true,      // Remove background noise from speakers
-            noiseSuppression: true,      // Reduce ambient noise
-            autoGainControl: true,       // Auto-adjust microphone volume
-            sampleRate: 48000,           // High quality audio
+            echoCancellation: true,      
+            noiseSuppression: true,      
+            autoGainControl: true,       
+            sampleRate: 48000,           
           },
         });
+        
+        console.log("✅ Camera/Microphone access granted!");
         setLocalStream(stream);
 
         if (localVideoRef.current) {
@@ -93,8 +113,36 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
         socket.emit("video-ready", { debateId, userId, playerName });
         console.log("✅ Local audio enhanced with: echo cancellation, noise suppression, auto-gain");
       } catch (err) {
-        console.error("Error accessing camera/microphone:", err);
-        setError("Cannot access camera or microphone. Please check permissions.");
+        console.error("❌ Error accessing camera/microphone:", err);
+        console.error("Error name:", err.name);
+        console.error("Error message:", err.message);
+        
+        let errorMsg = "Cannot access camera or microphone. ";
+        
+        if (err.name === 'NotAllowedError') {
+          errorMsg = "❌ PERMISSION DENIED\n\n";
+          errorMsg += "📍 Click the 🔒 lock icon in the address bar\n";
+          errorMsg += "📍 Find 'Camera' & 'Microphone' settings\n";
+          errorMsg += "📍 Change to 'Allow'\n";
+          errorMsg += "📍 Refresh the page";
+        } else if (err.name === 'NotFoundError') {
+          errorMsg = "❌ CAMERA/MICROPHONE NOT FOUND\n\n";
+          errorMsg += "📍 Check hardware is connected\n";
+          errorMsg += "📍 Check no other app is using it\n";
+          errorMsg += "📍 Try a different browser";
+        } else if (err.name === 'NotReadableError') {
+          errorMsg = "❌ CAMERA/MICROPHONE IN USE\n\n";
+          errorMsg += "📍 Close other apps using camera\n";
+          errorMsg += "📍 Refresh this page\n";
+          errorMsg += "📍 Try a different browser tab";
+        } else if (err.name === 'SecurityError') {
+          errorMsg = "❌ SECURITY ERROR\n\n";
+          errorMsg += "📍 Your browser blocked access\n";
+          errorMsg += "📍 Check if connection is HTTPS\n";
+          errorMsg += "📍 Try accessing from HTTPS URL";
+        }
+        
+        setError(errorMsg);
       }
     };
 
@@ -361,6 +409,39 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     }
   };
 
+  // Retry camera/microphone access after permission granted
+  const retryPermissions = async () => {
+    console.log("🔄 Retrying camera/microphone access...");
+    setError(null);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: {
+          echoCancellation: true,      
+          noiseSuppression: true,      
+          autoGainControl: true,       
+          sampleRate: 48000,           
+        },
+      });
+      
+      console.log("✅ Camera/Microphone access granted!");
+      setLocalStream(stream);
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      socket.emit("video-ready", { debateId, userId, playerName });
+      console.log("✅ Local audio enhanced");
+    } catch (err) {
+      console.error("❌ Retry failed:", err.name);
+      setError(err.name === 'NotAllowedError' 
+        ? "Still denied. Please allow camera/microphone in browser settings and try again." 
+        : "Retry failed. Please check your camera/microphone and try again.");
+    }
+  };
+
   // Enhanced grid calculation for many users
   const remoteCount = Object.keys(remoteStreams).length;
   const totalCount = remoteCount + 1; // +1 for local video
@@ -379,8 +460,15 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
   return (
     <div className="w-full">
       {error && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-          ⚠️ {error} - Local streaming is still working.
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="whitespace-pre-line text-sm">{error}</div>
+          <button
+            onClick={retryPermissions}
+            className="mt-3 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition"
+          >
+            🔄 Retry Camera/Microphone Access
+          </button>
+          <p className="text-xs mt-2 italic">After allowing permissions in browser settings, click Retry above.</p>
         </div>
       )}
 
