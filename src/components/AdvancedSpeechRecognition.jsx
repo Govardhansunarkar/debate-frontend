@@ -17,6 +17,9 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef("");
   const listeningStartTimeRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);  // Auto-submit after 5s silence
+  const inactivityTimeoutRef = useRef(null);  // AI counter-attack after 20s inactivity
+  const lastActivityRef = useRef(Date.now());
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -163,12 +166,28 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         
         // Only get AI response if this is an AI debate room AND debate is still active
         if (roomType === 'ai' && isActive) {
-          console.log("[SpeechRecognition] AI Debate: Waiting 5 seconds before sending to LLM...");
-          // Wait 5 seconds to give user time to think before AI responds
-          setTimeout(async () => {
-            console.log("[SpeechRecognition] 5 seconds passed, now calling handleAIResponse...");
-            await handleAIResponse(userSpeech, updatedHistory);
-          }, 5000);
+          console.log("[SpeechRecognition] AI Debate: Immediately calling handleAIResponse (no fixed delay)...");
+          // INSTANT SUBMISSION - No 5 second delay, AI responds immediately for faster latency
+          await handleAIResponse(userSpeech, updatedHistory);
+          
+          // Start inactivity timer - if user doesn't respond in 20-30 seconds, AI auto-counterattacks
+          lastActivityRef.current = Date.now();
+          if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+          
+          inactivityTimeoutRef.current = setTimeout(async () => {
+            console.log("[SpeechRecognition] ⏱️ User inactive for 20+ seconds - AI auto-counterattacking");
+            if (isActive) {
+              const autoCounterAttack = {
+                speaker: "user",
+                text: "[silence]",
+                points: 0,
+                timestamp: new Date(),
+                duration: 0
+              };
+              const historyWithSilence = [...updatedHistory, autoCounterAttack];
+              await handleAIResponse("[User has not responded for 20 seconds. Provide a counter-argument or summary.]", historyWithSilence);
+            }
+          }, 20000);  // 20 seconds of inactivity
         } else if (roomType === 'ai' && !isActive) {
           console.warn("[SpeechRecognition] ⏱️ Debate timeout! Not requesting AI response");
         } else {
@@ -189,6 +208,10 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
     recognitionRef.current = recognition;
 
     return () => {
+      // Clear timers
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+      
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
@@ -199,6 +222,10 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   useEffect(() => {
     if (!isActive) {
       console.log("[SpeechRecognition] ⏱️ DEBATE ENDED - Stopping all speech and recognition");
+      
+      // Clear all timers
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
       
       // Stop speech recognition immediately
       if (recognitionRef.current) {
@@ -231,6 +258,13 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       setSubmissionError(null);
       setIsSubmitting(true);
       setIsAISpeaking(true);
+      
+      // Clear inactivity timer while AI is responding
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+        inactivityTimeoutRef.current = null;
+      }
+      
       console.log("[SpeechRecognition] Submitting to API:", userSpeech);
       console.log("[SpeechRecognition] Debate history length:", currentDebateHistory?.length);
       console.log("[SpeechRecognition] Full debate history:", JSON.stringify(currentDebateHistory, null, 2));
@@ -294,6 +328,27 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       setIsSubmitting(false);
       setIsAISpeaking(false);
       console.log("[SpeechRecognition] handleAIResponse completed");
+      
+      // Restart inactivity timer after AI response completes
+      // If user doesn't respond in next 20 seconds, AI will auto-counterattack again
+      lastActivityRef.current = Date.now();
+      if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+      
+      if (isActive && roomType === 'ai') {
+        inactivityTimeoutRef.current = setTimeout(async () => {
+          console.log("[SpeechRecognition] ⏱️ User inactive for another 20 seconds - AI auto-counterattacking again");
+          if (isActive) {
+            const autoCounterAttack = {
+              speaker: "user",
+              text: "[silence]",
+              points: 0,
+              timestamp: new Date(),
+              duration: 0
+            };
+            await handleAIResponse("[User is still not responding after 20 seconds. Provide another counter-argument or closing statement.]", [...debateHistory, autoCounterAttack]);
+          }
+        }, 20000);
+      }
     }
   };
 
@@ -311,6 +366,10 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
 
     console.log("[SpeechRecognition] 🎤 Checking microphone permissions...");
     setSubmissionError(null);
+    
+    // Clear old timers when starting new listening session
+    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+    if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
 
     // Check for microphone permissions
     navigator.mediaDevices.getUserMedia({ audio: true })
@@ -324,6 +383,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         setUserTranscript("");
         setIsListening(true);
         listeningStartTimeRef.current = Date.now();
+        lastActivityRef.current = Date.now();
         
         recognitionRef.current.start();
         console.log("[SpeechRecognition] 🎯 Started listening...");

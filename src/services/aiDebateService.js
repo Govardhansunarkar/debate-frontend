@@ -38,7 +38,7 @@ export const getAIResponse = async (userSpeech, topic, debateContext) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 20000  // 20 second timeout for AI response
+      timeout: 60000  // 60 second timeout - increased to account for NVIDIA unlimited wait time
     });
     
     console.log('[aiDebateService] Response received:', response.data);
