@@ -403,25 +403,47 @@ export default function DebateRoom() {
               </button>
             </div>
 
-            {/* Chat Messages */}
-            <div className="bg-white rounded-lg shadow p-3 h-48 overflow-y-auto mt-3">
-              <h3 className="font-bold mb-2 text-sm">💬 Debate Chat</h3>
-              {messages.length === 0 ? (
-                <p className="text-center text-gray-500">No messages yet. Start the debate!</p>
-              ) : (
-                messages.map((msg, idx) => (
-                  <div key={idx} className="mb-4 border-l-4 border-blue-500 pl-4 py-2">
-                    <p className="text-sm font-semibold text-gray-600">{msg.playerName}</p>
-                    <p className="text-gray-800 mt-1">{msg.text}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </p>
+            {/* Animated AI Avatar - Center Focus */}
+            <div className="flex-1 flex items-center justify-center mt-6 mb-6">
+              <div className="relative w-48 h-48 flex items-center justify-center">
+                {/* Animated Background Glow */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
+                
+                {/* Inner Circle with Animated Border */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
+                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                    {/* AI Avatar Icon */}
+                    <div className="text-7xl animate-bounce" style={{ animationDuration: '2s' }}>
+                      🤖
+                    </div>
                   </div>
-                ))
-              )}
+                </div>
+
+                {/* Orbiting Elements */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-3 h-3 bg-blue-400 rounded-full"></div>
+                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-3 h-3 bg-purple-400 rounded-full"></div>
+                  <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-3 h-3 bg-pink-400 rounded-full"></div>
+                </div>
+
+                {/* Thinking Indicator */}
+                <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+                  <div className="flex gap-1 items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Message Input */}
+            {/* Status Text */}
+            <div className="text-center text-sm text-gray-600 mb-3">
+              <p className="font-semibold">🎤 Ready to debate?</p>
+              <p className="text-xs text-gray-500">Click the microphone to speak with AI</p>
+            </div>
+
+            {/* Message Input - Simplified */}
             <div className="flex gap-2 mt-2">
               <input
                 type="text"
