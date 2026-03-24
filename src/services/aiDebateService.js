@@ -1,6 +1,11 @@
 import axios from "axios";
 
-const API_URL = "https://ai-debate-arena-backend-9zur.onrender.com/api";
+// Auto-detect API URL - localhost for dev, Render for production
+const API_URL = import.meta.env.MODE === 'development'
+  ? 'http://localhost:3001/api'
+  : 'https://ai-debate-arena-backend-9zur.onrender.com/api';
+
+console.log('[aiDebateService] Using API URL:', API_URL);
 
 // Get AI response to user's argument with full debate context
 export const getAIResponse = async (userSpeech, topic, debateContext) => {
@@ -181,6 +186,10 @@ export const calculateDebatePoints = (speechText) => {
   };
 };
 
+// Track if speech is currently in progress to prevent concurrent utterances
+let isSpeaking = false;
+let currentUtterance = null;
+
 // Text-to-Speech: Read AI response aloud with advanced options
 export const speakText = (text, options = {}) => {
   return new Promise((resolve) => {
@@ -192,16 +201,26 @@ export const speakText = (text, options = {}) => {
     }
 
     try {
+      // Prevent concurrent speech - don't start if already speaking
+      if (isSpeaking && window.speechSynthesis.speaking) {
+        console.warn("[TTS] Speech already in progress, queueing or skipping");
+        resolve();
+        return;
+      }
+
       // Cancel any ongoing speech first
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         console.log("[TTS] Cancelled ongoing speech");
+        isSpeaking = false;
       }
 
       // Wait a moment for cancellation to complete
       setTimeout(() => {
         try {
           const utterance = new SpeechSynthesisUtterance(text);
+          currentUtterance = utterance;
+          isSpeaking = true;
           
           // Configure speech parameters - optimized for clarity
           utterance.rate = options.rate || 0.9; // Slightly slower for clarity
@@ -245,13 +264,22 @@ export const speakText = (text, options = {}) => {
 
           utterance.onend = () => {
             console.log("[TTS] ✓ Speech completed successfully");
+            isSpeaking = false;
+            currentUtterance = null;
             resolve();
           };
 
           utterance.onerror = (event) => {
-            console.error("[TTS] ✗ Speech error:", event.error);
-            console.log("[TTS] Details:", event);
-            // Still resolve - don't break the debate
+            // Handle "interrupted" error gracefully - it's common when switching speeches
+            if (event.error === 'interrupted') {
+              console.log("[TTS] ℹ Speech was interrupted (expected - starting new speech)");
+            } else {
+              console.error("[TTS] ✗ Speech error:", event.error);
+              console.log("[TTS] Details:", event);
+            }
+            // Always resolve to continue the debate
+            isSpeaking = false;
+            currentUtterance = null;
             resolve();
           };
 
@@ -275,6 +303,8 @@ export const speakText = (text, options = {}) => {
             if (!hasStarted) {
               console.warn("[TTS] Resolving after timeout without starting");
             }
+            isSpeaking = false;
+            currentUtterance = null;
             resolve();
           }, 120000);
 
@@ -283,12 +313,16 @@ export const speakText = (text, options = {}) => {
 
         } catch (innerError) {
           console.error("[TTS] Error creating SpeechSynthesisUtterance:", innerError);
+          isSpeaking = false;
+          currentUtterance = null;
           resolve();
         }
       }, 50); // Small delay for cancellation to complete
 
     } catch (err) {
       console.error("[TTS] Unexpected error in speakText:", err);
+      isSpeaking = false;
+      currentUtterance = null;
       resolve();
     }
   });
@@ -299,5 +333,7 @@ export const stopSpeech = () => {
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
     console.log("[aiDebateService] Speech stopped");
+    isSpeaking = false;
+    currentUtterance = null;
   }
 };

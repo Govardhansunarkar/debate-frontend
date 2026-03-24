@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
+import { validateTopic } from "../services/api";
 
 export default function AIDebate() {
   const [difficulty, setDifficulty] = useState("medium");
@@ -8,6 +9,8 @@ export default function AIDebate() {
   const [loading, setLoading] = useState(false);
   const [debateStarted, setDebateStarted] = useState(false);
   const [debateId, setDebateId] = useState("");
+  const [topicError, setTopicError] = useState("");  // NEW
+  const [topicValidating, setTopicValidating] = useState(false);  // NEW
   const navigate = useNavigate();
 
   const difficulties = [
@@ -27,8 +30,34 @@ export default function AIDebate() {
 
   const handleStartDebate = async () => {
     if (!topic.trim()) {
-      alert("Please select or enter a topic");
+      setTopicError("Please select or enter a topic");
       return;
+    }
+
+    setTopicError("");
+    
+    // Check if it's a SUGGESTED TOPIC (pre-approved) - skip validation
+    const isSuggestedTopic = suggestedTopics.includes(topic.trim());
+    
+    if (!isSuggestedTopic) {
+      // Only validate CUSTOM/USER-ENTERED topics
+      setTopicValidating(true);
+      console.log('[AIDebate] Custom topic - validating with AI:', topic);
+      const validation = await validateTopic(topic);
+      console.log('[AIDebate] Validation result:', validation);
+
+      if (!validation.success || !validation.isValid) {
+        setTopicError(validation.reason || "❌ This topic is not suitable for debate. Choose a different topic.");
+        if (validation.suggestion) {
+          setTopicError(prev => prev + "\n\n💡 " + validation.suggestion);
+        }
+        setTopicValidating(false);
+        return;
+      }
+
+      setTopicValidating(false);
+    } else {
+      console.log('[AIDebate] Suggested topic - skipping validation:', topic);
     }
 
     setLoading(true);
@@ -42,11 +71,12 @@ export default function AIDebate() {
       
       // Navigate to debate room after a short delay
       setTimeout(() => {
-        navigate(`/debate-room/${debateId}?ai=true`);
+        const encodedTopic = encodeURIComponent(topic);
+        navigate(`/debate-room/${debateId}?ai=true&topic=${encodedTopic}`);
       }, 1500);
     } catch (error) {
       console.error(error);
-      alert("Error starting debate");
+      setTopicError("Error starting debate - please try again");
     }
 
     setLoading(false);
@@ -102,7 +132,10 @@ export default function AIDebate() {
               {suggestedTopics.map((t, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setTopic(t)}
+                  onClick={() => {
+                    setTopic(t);
+                    setTopicError("");
+                  }}
                   className={`p-3 rounded-lg text-left text-sm transition ${
                     topic === t
                       ? "bg-blue-500 text-white ring-2 ring-blue-300"
@@ -121,19 +154,29 @@ export default function AIDebate() {
                 type="text"
                 placeholder="Enter a debate topic..."
                 value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onChange={(e) => {
+                  setTopic(e.target.value);
+                  setTopicError("");
+                }}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition ${
+                  topicError ? "border-red-500 bg-red-50" : "border-gray-300"
+                }`}
               />
+              {topicError && (
+                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                  <p className="text-red-700 text-sm whitespace-pre-wrap">{topicError}</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Start Button */}
           <button
             onClick={handleStartDebate}
-            disabled={loading || !topic.trim()}
+            disabled={loading || topicValidating || !topic.trim()}
             className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold text-lg"
           >
-            {loading ? "Starting Debate..." : "Start Debate 🎬"}
+            {topicValidating ? "✓ Validating topic..." : loading ? "Starting Debate..." : "Start Debate 🎬"}
           </button>
         </div>
 

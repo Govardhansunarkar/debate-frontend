@@ -25,7 +25,13 @@ export default function DebateRoom() {
     // Check if this is an AI debate
     const params = new URLSearchParams(window.location.search);
     const isAI = params.get('ai') === 'true';
+    const topicFromUrl = params.get('topic');
     setIsAIDebate(isAI);
+    
+    // Set topic from URL if available
+    if (topicFromUrl) {
+      setTopic(decodeURIComponent(topicFromUrl));
+    }
     
     // Set room type based on URL parameter
     if (isAI) {
@@ -36,12 +42,19 @@ export default function DebateRoom() {
       debateId,
       userId: localStorage.getItem("userId"),
       playerName: localStorage.getItem("playerName"),
-      roomType: isAI ? 'ai' : 'user-only'
+      roomType: isAI ? 'ai' : 'user-only',
+      topic: topicFromUrl ? decodeURIComponent(topicFromUrl) : 'Debate Topic'
     });
 
     // When I first join debate - get all participants already in room
     socket.on("debate-joined", (data) => {
-      console.log("Debate joined successfully. Participants:", data.participants);
+      console.log("Debate joined successfully. Participants:", data.participants, "Topic:", data.topic);
+      
+      // Update topic from server
+      if (data.topic) {
+        setTopic(data.topic);
+      }
+      
       if (data.participants && data.participants.length > 0) {
         // Only add if not already present
         setPlayers((prev) => {
@@ -94,6 +107,21 @@ export default function DebateRoom() {
       console.log(data.message);
     });
 
+    // Listen for speeches from other players
+    socket.on("speech-received", (data) => {
+      console.log(`[Speech Received] ${data.playerName}: ${data.speech.substring(0, 50)}...`);
+      // Add to messages to display
+      setMessages((prev) => [...prev, {
+        userId: data.userId,
+        playerName: data.playerName,
+        text: `${data.speech} (Points: ${data.points})`,
+        timestamp: data.timestamp,
+        isSpokenMessage: true
+      }]);
+      // Add to speeches array
+      setSpeeches((prev) => [...prev, data]);
+    });
+
     return () => {
       socket.off("receive-message");
       socket.off("player-joined");
@@ -101,6 +129,7 @@ export default function DebateRoom() {
       socket.off("timer-updated");
       socket.off("debate-ended");
       socket.off("player-disconnected");
+      socket.off("speech-received");
     };
   }, [debateId]);
 
@@ -160,18 +189,29 @@ export default function DebateRoom() {
   const handleTranscript = (transcriptData) => {
     console.log('[DebateRoom] handleTranscript called with:', transcriptData);
     
+    // Validate transcriptData
+    if (!transcriptData || !transcriptData.text) {
+      console.warn('[DebateRoom] Invalid transcriptData received:', transcriptData);
+      return;
+    }
+    
     // Add speech to list
     setSpeeches((prevSpeeches) => {
-      const updatedSpeeches = [...prevSpeeches, transcriptData];
-      console.log('[DebateRoom] Updated speeches count:', updatedSpeeches.length);
-      console.log('[DebateRoom] Current speeches:', updatedSpeeches);
-      
-      // Update metrics
-      const metrics = trackDebateMetrics(updatedSpeeches);
-      console.log('[DebateRoom] Updated metrics:', metrics);
-      setDebateMetrics(metrics);
-      
-      return updatedSpeeches;
+      try {
+        const updatedSpeeches = [...prevSpeeches, transcriptData];
+        console.log('[DebateRoom] Updated speeches count:', updatedSpeeches.length);
+        console.log('[DebateRoom] Current speeches:', updatedSpeeches);
+        
+        // Update metrics with error handling
+        const metrics = trackDebateMetrics(updatedSpeeches);
+        console.log('[DebateRoom] Updated metrics:', metrics);
+        setDebateMetrics(metrics);
+        
+        return updatedSpeeches;
+      } catch (error) {
+        console.error('[DebateRoom] Error updating speeches:', error);
+        return prevSpeeches; // Keep previous state on error
+      }
     });
 
     // Broadcast speech to other players
@@ -234,6 +274,7 @@ export default function DebateRoom() {
     }
     
     localStorage.setItem(`topic_${debateId}`, topic);
+    localStorage.setItem(`roomType_${debateId}`, roomType);
     
     // Call backend to end debate (only for backend debates, not local/demo debates)
     const isLocalDebate = debateId && debateId.startsWith('debate_');
@@ -300,16 +341,16 @@ export default function DebateRoom() {
               <p className="text-gray-600 text-xs md:text-sm mt-2 font-semibold">⏱️ Time Remaining</p>
             </div>
 
-            {/* Video Stream Component - HIDDEN IN AI DEBATE */}
+            {/* Video Stream Component - ONLY FOR USER DEBATES */}
             {!isAIDebate && (
               <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
-              <VideoStream
-                debateId={debateId}
-                userId={localStorage.getItem("userId")}
-                playerName={localStorage.getItem("playerName")}
-                isAIDebate={isAIDebate}
-                participants={players}
-              />
+                <VideoStream
+                  debateId={debateId}
+                  userId={localStorage.getItem("userId")}
+                  playerName={localStorage.getItem("playerName")}
+                  isAIDebate={isAIDebate}
+                  participants={players}
+                />
               </div>
             )}
 

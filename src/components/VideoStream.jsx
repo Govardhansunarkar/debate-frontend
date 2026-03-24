@@ -242,7 +242,18 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       localStream.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
-      setIsCameraOn(!isCameraOn);
+      const newCameraState = !isCameraOn;
+      setIsCameraOn(newCameraState);
+      
+      // Broadcast camera state change to all participants
+      socket.emit("video-state-change", {
+        debateId,
+        userId,
+        playerName,
+        cameraOn: newCameraState,
+        micOn: isMicOn
+      });
+      console.log(`[Video] Camera toggled to: ${newCameraState ? 'ON' : 'OFF'}`);
     }
   };
 
@@ -251,16 +262,35 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       localStream.getAudioTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
-      setIsMicOn(!isMicOn);
+      const newMicState = !isMicOn;
+      setIsMicOn(newMicState);
+      
+      // Broadcast microphone state change to all participants
+      socket.emit("video-state-change", {
+        debateId,
+        userId,
+        playerName,
+        cameraOn: isCameraOn,
+        micOn: newMicState
+      });
+      console.log(`[Video] Microphone toggled to: ${newMicState ? 'ON' : 'OFF'}`);
     }
   };
 
-  // Calculate grid columns based on number of remote streams
+  // Enhanced grid calculation for many users
   const remoteCount = Object.keys(remoteStreams).length;
+  const totalCount = remoteCount + 1; // +1 for local video
+  
   let gridClass = "grid-cols-1";
-  if (remoteCount >= 2) gridClass = "md:grid-cols-2";
-  if (remoteCount >= 3) gridClass = "lg:grid-cols-3";
-  if (remoteCount >= 4) gridClass = "grid-cols-2 lg:grid-cols-2";
+  if (totalCount === 2) gridClass = "grid-cols-1 md:grid-cols-2";
+  if (totalCount === 3) gridClass = "grid-cols-1 md:grid-cols-3";
+  if (totalCount === 4) gridClass = "grid-cols-2 md:grid-cols-2";
+  if (totalCount === 5) gridClass = "grid-cols-2 md:grid-cols-5";
+  if (totalCount === 6) gridClass = "grid-cols-2 md:grid-cols-3";
+  if (totalCount === 7) gridClass = "grid-cols-2 md:grid-cols-4 lg:grid-cols-7";
+  if (totalCount === 8) gridClass = "grid-cols-2 md:grid-cols-4";
+  if (totalCount === 9) gridClass = "grid-cols-3 md:grid-cols-3";
+  if (totalCount >= 10) gridClass = "grid-cols-3 md:grid-cols-5 lg:grid-cols-6";
 
   return (
     <div className="w-full">
@@ -311,17 +341,31 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       {/* Remote Videos Grid */}
       {remoteCount > 0 && (
         <div className="mb-3">
-          <h3 className="text-sm font-semibold mb-2 text-gray-800">
-            🎥 Debate Participants ({remoteCount})
+          <h3 className="text-sm font-semibold mb-2 text-gray-800 flex items-center gap-2">
+            🎥 <span>Debate Participants ({remoteCount})</span>
+            <span className="inline-block bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+              LIVE
+            </span>
           </h3>
-          <div className={`grid ${gridClass} gap-2`}>
+          <div className={`grid ${gridClass} gap-2 auto-rows-max`}>
             {Object.entries(remoteStreams).map(([remoteUserId, data]) => (
-              <RemoteVideoPlayer 
-                key={remoteUserId} 
-                stream={data.stream} 
-                userId={remoteUserId}
-                playerName={data.playerName}
-              />
+              <div key={remoteUserId} className="bg-black rounded-lg overflow-hidden shadow-lg">
+                <div className="relative w-full aspect-video bg-gray-900">
+                  <video
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                    srcObject={data.stream}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
+                    👤 {data.playerName}
+                  </div>
+                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                    STREAMING
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>

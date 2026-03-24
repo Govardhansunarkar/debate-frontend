@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import FeedbackReport from "../components/FeedbackReport";
-import { getDebateFeedback } from "../services/debateAnalysis";
+import SimpleFeedback from "../components/SimpleFeedback";
+import { getDebateFeedback, simplifyFeedback } from "../services/debateAnalysis";
 
 export default function ResultPage() {
   const { debateId } = useParams();
@@ -15,6 +16,7 @@ export default function ResultPage() {
   const [topic, setTopic] = useState(""); 
   const [loading, setLoading] = useState(true);
   const [fetchingFeedback, setFetchingFeedback] = useState(false);
+  const [isAIDebate, setIsAIDebate] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -29,12 +31,19 @@ export default function ResultPage() {
         const savedSpeeches = localStorage.getItem(`speeches_${debateId}`);
         const savedMetrics = localStorage.getItem(`debateMetrics_${debateId}`);
         const savedTopic = localStorage.getItem(`topic_${debateId}`);
+        const savedRoomType = localStorage.getItem(`roomType_${debateId}`);
 
         console.log('[ResultPage] LocalStorage data:', {
           speeches: savedSpeeches ? JSON.parse(savedSpeeches).length : 0,
           metrics: !!savedMetrics,
-          topic: savedTopic
+          topic: savedTopic,
+          roomType: savedRoomType
         });
+
+        // Check if this is an AI debate
+        if (savedRoomType === 'ai') {
+          setIsAIDebate(true);
+        }
 
         if (savedSpeeches) {
           const parsedSpeeches = JSON.parse(savedSpeeches);
@@ -49,7 +58,16 @@ export default function ResultPage() {
             parsedSpeeches
           );
           console.log('[ResultPage] AI feedback received:', feedbackData);
-          setFeedback(feedbackData);
+          
+          // For AI debates, simplify the feedback for better UX
+          if (savedRoomType === 'ai') {
+            const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
+            console.log('[ResultPage] Simplified feedback:', simplifiedFeedback);
+            setFeedback(simplifiedFeedback);
+          } else {
+            setFeedback(feedbackData);
+          }
+          
           setFetchingFeedback(false);
         } else {
           console.warn('[ResultPage] No speeches found in localStorage!');
@@ -105,6 +123,20 @@ export default function ResultPage() {
   }, [debateId]);
 
   if (loading) return <div className="text-center p-8">Loading results...</div>;
+
+  // Show SimpleFeedback for AI Debates
+  if (isAIDebate) {
+    return (
+      <SimpleFeedback 
+        feedback={feedback}
+        debateMetrics={debateMetrics}
+        topic={topic}
+        debateId={debateId}
+      />
+    );
+  }
+
+  // Show Complex Feedback for User-vs-User Debates
 
   const playerScores = results?.scores || {};
   const maxScore = Math.max(...Object.values(playerScores));

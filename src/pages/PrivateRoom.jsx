@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createRoom, joinRoom } from "../services/api";
+import { createRoom, joinRoom, validateTopic } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 export default function PrivateRoom() {
@@ -10,19 +10,40 @@ export default function PrivateRoom() {
   const [createLoading, setCreateLoading] = useState(false);
   const [roomCode, setRoomCode] = useState("");
   const [roomCreated, setRoomCreated] = useState(false);
+  const [topicError, setTopicError] = useState("");  // NEW: Topic validation error
+  const [topicValidating, setTopicValidating] = useState(false);  // NEW: Validation in progress
 
   // Join Room State
   const [joinCode, setJoinCode] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
 
-  // Handle Create Room
+  // Handle Create Room with Topic Validation
   const handleCreateRoom = async () => {
     if (!createTopic.trim()) {
-      alert("Please enter a debate topic");
+      setTopicError("Please enter a debate topic");
       return;
     }
 
+    setTopicError("");
+    setTopicValidating(true);
+
+    // Validate topic first
+    console.log('[PrivateRoom] Validating topic:', createTopic);
+    const validation = await validateTopic(createTopic);
+    console.log('[PrivateRoom] Validation result:', validation);
+
+    if (!validation.success || !validation.isValid) {
+      setTopicError(validation.reason || "❌ This topic is not suitable for debate. Choose a different topic.");
+      if (validation.suggestion) {
+        setTopicError(prev => prev + "\n\n💡 " + validation.suggestion);
+      }
+      setTopicValidating(false);
+      return;
+    }
+
+    setTopicValidating(false);
     setCreateLoading(true);
+
     const res = await createRoom(
       createTopic,
       localStorage.getItem("playerName") || "Anonymous",
@@ -30,7 +51,7 @@ export default function PrivateRoom() {
     );
 
     if (!res.success) {
-      alert(res.error || "Failed to create room");
+      setTopicError(res.error || "Failed to create room");
       setCreateLoading(false);
       return;
     }
@@ -138,24 +159,34 @@ export default function PrivateRoom() {
                 type="text"
                 placeholder="e.g., Should we have a 4-day work week?"
                 value={createTopic}
-                onChange={(e) => setCreateTopic(e.target.value)}
+                onChange={(e) => {
+                  setCreateTopic(e.target.value);
+                  setTopicError("");  // Clear error when user types
+                }}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateRoom()}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
+                  topicError ? "border-red-500 bg-red-50" : "border-gray-300"
+                }`}
               />
+              {topicError && (
+                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                  <p className="text-red-700 text-sm whitespace-pre-wrap">{topicError}</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
               <p className="text-sm text-gray-700">
-                💡 <strong>Tip:</strong> Choose an interesting topic for you and your members to debate about!
+                💡 <strong>Tip:</strong> Choose an interesting topic with multiple perspectives for you and your members to debate about!
               </p>
             </div>
 
             <button
               onClick={handleCreateRoom}
-              disabled={createLoading || !createTopic.trim()}
+              disabled={createLoading || topicValidating || !createTopic.trim()}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition text-lg"
             >
-              {createLoading ? "Creating..." : "Create Room 🚀"}
+              {topicValidating ? "✓ Validating topic..." : createLoading ? "Creating..." : "Create Room 🚀"}
             </button>
           </div>
 

@@ -40,6 +40,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       listeningStartTimeRef.current = Date.now();
       setIsListening(true);
       setUserTranscript("");
+      setSubmissionError(null);  // Clear any previous errors
       interimTranscript = "";
     };
 
@@ -67,12 +68,35 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       console.error("[SpeechRecognition] Error:", event.error);
       setIsListening(false);
       
-      // Retry on network error
-      if (event.error === "network") {
-        console.log("[SpeechRecognition] Retrying after network error...");
+      let errorMsg = "Speech error occurred";
+      
+      // Map error codes to user-friendly messages
+      const errorMap = {
+        "network": "🌐 Network error - Please check your internet connection",
+        "no-speech": "🔇 No speech detected - Please speak louder or move closer to the microphone",
+        "audio-capture": "🎤 Microphone not accessible - Check browser permissions",
+        "not-allowed": "❌ Microphone permission denied - Allow microphone in browser settings",
+        "service-not-allowed": "🔒 Speech service not allowed in this context",
+        "bad-grammar": "⚠️ Speech format not recognized - Try again",
+        "net-timeout": "⏱️ Network timeout - Try again"
+      };
+      
+      errorMsg = errorMap[event.error] || `Speech error: ${event.error}`;
+      setSubmissionError(errorMsg);
+      console.warn("[SpeechRecognition] Error message:", errorMsg);
+      
+      // Retry on network/no-speech errors
+      if (event.error === "network" || event.error === "no-speech") {
+        console.log(`[SpeechRecognition] Retrying after ${event.error} error...`);
         setTimeout(() => {
-          if (isActive) recognition.start();
-        }, 1000);
+          if (isActive) {
+            try {
+              recognition.start();
+            } catch (e) {
+              console.error("[SpeechRecognition] Failed to restart:", e);
+            }
+          }
+        }, 2000);
       }
     };
 
@@ -104,6 +128,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         if (socket && debateId) {
           socket.emit("user-speech", {
             debateId,
+            userId: localStorage.getItem("userId"),
+            playerName: localStorage.getItem("playerName") || "Anonymous",
             speech: userSpeech,
             points: points,
             qualityScore: scoreResult.score
@@ -135,10 +161,12 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
 
         console.log("[SpeechRecognition] Room type:", roomType);
         
-        // Only get AI response if this is an AI debate room
-        if (roomType === 'ai') {
+        // Only get AI response if this is an AI debate room AND debate is still active
+        if (roomType === 'ai' && isActive) {
           console.log("[SpeechRecognition] AI Debate: Calling handleAIResponse to submit to API");
           await handleAIResponse(userSpeech, updatedHistory);
+        } else if (roomType === 'ai' && !isActive) {
+          console.warn("[SpeechRecognition] ⏱️ Debate timeout! Not requesting AI response");
         } else {
           console.log("[SpeechRecognition] User-Only Debate: Tracking progress only, no AI response");
         }
@@ -148,7 +176,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         listeningStartTimeRef.current = null;
       } else {
         console.warn("[SpeechRecognition] No speech captured");
-        setUserTranscript("No speech detected. Please try again.");
+        setUserTranscript("🔇 No speech detected");
+        setSubmissionError("🔇 No speech detected - Please check:\n1. Microphone is connected\n2. Browser has microphone permission\n3. You spoke clearly\n\nTry again!");
         listeningStartTimeRef.current = null;
       }
     };
@@ -162,9 +191,39 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
     };
   }, [debateId, socket, isActive, roomType]);
 
+  // CLEANUP: When debate ends (isActive becomes false), stop all ongoing speech
+  useEffect(() => {
+    if (!isActive) {
+      console.log("[SpeechRecognition] ⏱️ DEBATE ENDED - Stopping all speech and recognition");
+      
+      // Stop speech recognition immediately
+      if (recognitionRef.current) {
+        console.log("[SpeechRecognition] ⏱️ Aborting speech recognition");
+        recognitionRef.current.abort();
+      }
+      
+      // Stop any ongoing text-to-speech
+      console.log("[SpeechRecognition] ⏱️ Stopping TTS");
+      stopSpeech();
+      
+      // Clear any submission state
+      setIsSubmitting(false);
+      setIsAISpeaking(false);
+      setIsListening(false);
+    }
+  }, [isActive]);
+
   // Handle AI Response Generation
   const handleAIResponse = async (userSpeech, currentDebateHistory) => {
     try {
+      // CHECK IF DEBATE IS STILL ACTIVE - PREVENTS AI RESPONSE AFTER TIMEOUT
+      if (!isActive) {
+        console.warn("[SpeechRecognition] ⏱️ Debate has ended! Stopping AI response");
+        setIsSubmitting(false);
+        setIsAISpeaking(false);
+        return;
+      }
+
       setSubmissionError(null);
       setIsSubmitting(true);
       setIsAISpeaking(true);

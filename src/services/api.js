@@ -1,4 +1,9 @@
-const BASE_URL = "https://ai-debate-arena-backend-9zur.onrender.com/api";
+// Use localhost for development, production URL for production
+const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3001/api'
+  : 'https://debate-backend-paro.onrender.com/api';
+
+console.log('[api] Using BASE_URL:', BASE_URL);
 
 // Room APIs
 export const createRoom = async (topic, playerName, roomType = 'user-only') => {
@@ -152,6 +157,25 @@ export const getUserHistory = async (userId) => {
   return res.json();
 };
 
+// Validate debate topic
+export const validateTopic = async (topic) => {
+  try {
+    const res = await fetch(`${BASE_URL}/debates/validate-topic`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic })
+    });
+    return res.json();
+  } catch (error) {
+    console.error('[api] validateTopic error:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      isValid: false
+    };
+  }
+};
+
 // Default export - object with all API functions for backward compatibility
 export default {
   createRoom,
@@ -167,6 +191,7 @@ export default {
   createUser,
   getUser,
   getUserHistory,
+  validateTopic,  // NEW: Topic validation
   // Add axios-like methods for services that use them
   post: async (url, data) => {
     const res = await fetch(`${BASE_URL}${url}`, {
