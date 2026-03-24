@@ -333,6 +333,16 @@ export default function DebateRoom() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Main Content Area */}
           <div className="lg:col-span-3 flex flex-col h-full">
+            {/* Timer - COMPACT at TOP (Before Animation) */}
+            <div className="text-center mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-xl shadow-md border-2 border-blue-200">
+              <div className="flex items-center justify-center gap-3">
+                <p className="text-3xl md:text-4xl font-bold text-blue-600">
+                  {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
+                </p>
+                <p className="text-gray-600 text-xs font-semibold">⏱️ Time Left</p>
+              </div>
+            </div>
+
             {/* Animated AI Avatar - TOP */}
             <div className="flex items-center justify-center mb-6 mt-2">
               <div className="relative w-40 h-40 flex items-center justify-center">
@@ -367,17 +377,7 @@ export default function DebateRoom() {
               </div>
             </div>
 
-            {/* Timer - COMPACT at TOP */}
-            <div className="text-center mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-xl shadow-md border-2 border-blue-200">
-              <div className="flex items-center justify-center gap-3">
-                <p className="text-3xl md:text-4xl font-bold text-blue-600">
-                  {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
-                </p>
-                <p className="text-gray-600 text-xs font-semibold">⏱️ Time Left</p>
-              </div>
-            </div>
-
-            {/* Status Text */}
+            {/* Status Text */
             <div className="text-center mb-4">
               <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
               <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
@@ -463,7 +463,7 @@ export default function DebateRoom() {
                 onClick={handleLeaveDebate}
                 className="col-span-1 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white py-3 rounded-lg font-bold text-sm transition shadow-md transform hover:scale-105"
               >
-                🚪
+                🚪 Leave
               </button>
             </div>
           </div>

@@ -435,11 +435,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   };
 
   if (!isActive) {
-    return (
-      <div className="p-4 bg-yellow-100 border border-yellow-400 rounded">
-        <p className="text-yellow-800">Click "Start Debate" to enable speech features</p>
-      </div>
-    );
+    return null;
   }
 
   return (
