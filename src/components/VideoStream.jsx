@@ -13,6 +13,12 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
   const [connectedUsers, setConnectedUsers] = useState(new Set());
   const peerRef = useRef(null);
   const participantNamesRef = useRef({}); // Track participant names
+  
+  // Audio enhancement state
+  const [audioAnalysers, setAudioAnalysers] = useState({}); // { userId: analyserNode }
+  const [speakingUsers, setSpeakingUsers] = useState(new Set()); // Who's currently speaking
+  const [volumeLevels, setVolumeLevels] = useState({}); // { userId: volume (0-100) }
+  const [remotePeerVolumes, setRemotePeerVolumes] = useState({}); // { userId: volume (0-1) }
 
   // Initialize PeerJS
   useEffect(() => {
@@ -64,13 +70,18 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     };
   }, [debateId, userId]);
 
-  // Get local camera/microphone
+  // Get local camera/microphone with audio enhancements
   useEffect(() => {
     const setupLocalStream = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true,
+          audio: {
+            echoCancellation: true,      // Remove background noise from speakers
+            noiseSuppression: true,      // Reduce ambient noise
+            autoGainControl: true,       // Auto-adjust microphone volume
+            sampleRate: 48000,           // High quality audio
+          },
         });
         setLocalStream(stream);
 
@@ -80,6 +91,7 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
 
         // Signal to other players that this user is ready
         socket.emit("video-ready", { debateId, userId, playerName });
+        console.log("✅ Local audio enhanced with: echo cancellation, noise suppression, auto-gain");
       } catch (err) {
         console.error("Error accessing camera/microphone:", err);
         setError("Cannot access camera or microphone. Please check permissions.");
@@ -94,6 +106,78 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       }
     };
   }, [debateId, userId, playerName]);
+
+  // Monitor audio activity for ALL remote streams (speaker detection) + volume control
+  useEffect(() => {
+    const audioContexts = {};
+    const analysers = {};
+    const gainNodes = {};
+
+    const monitorAudioActivity = async () => {
+      try {
+        for (const [remoteUserId, data] of Object.entries(remoteStreams)) {
+          if (!data.stream) continue;
+          
+          // Create audio context if needed
+          if (!audioContexts[remoteUserId]) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const mediaSource = audioContext.createMediaStreamSource(data.stream);
+            const analyser = audioContext.createAnalyser();
+            const gainNode = audioContext.createGain();
+            
+            analyser.fftSize = 2048;
+            mediaSource.connect(analyser);
+            mediaSource.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            audioContexts[remoteUserId] = audioContext;
+            analysers[remoteUserId] = analyser;
+            gainNodes[remoteUserId] = gainNode;
+          }
+
+          // Apply volume control
+          const gain = gainNodes[remoteUserId];
+          if (gain) {
+            gain.gain.value = remotePeerVolumes[remoteUserId] || 1;
+          }
+
+          // Get audio frequency data
+          const analyser = analysers[remoteUserId];
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(dataArray);
+
+          // Calculate average volume (0-100)
+          const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+          const volume = Math.min(100, Math.round(average * 1.5));
+
+          setVolumeLevels((prev) => ({ ...prev, [remoteUserId]: volume }));
+
+          // Detect if user is speaking (threshold: 20)
+          if (volume > 20) {
+            setSpeakingUsers((prev) => new Set([...prev, remoteUserId]));
+          } else {
+            setSpeakingUsers((prev) => {
+              const updated = new Set(prev);
+              updated.delete(remoteUserId);
+              return updated;
+            });
+          }
+        }
+      } catch (err) {
+        // Silently handle CORS or context errors
+        console.log("Audio analysis: ", err.message);
+      }
+    };
+
+    const interval = setInterval(monitorAudioActivity, 100); // Update every 100ms
+
+    return () => {
+      clearInterval(interval);
+      Object.values(audioContexts).forEach((ctx) => {
+        if (ctx.state !== "closed") ctx.close();
+      });
+    };
+  }, [remoteStreams, remotePeerVolumes]);
 
   // Handle incoming video-ready signal from other players
   useEffect(() => {
@@ -348,25 +432,80 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
             </span>
           </h3>
           <div className={`grid ${gridClass} gap-2 auto-rows-max`}>
-            {Object.entries(remoteStreams).map(([remoteUserId, data]) => (
-              <div key={remoteUserId} className="bg-black rounded-lg overflow-hidden shadow-lg">
-                <div className="relative w-full aspect-video bg-gray-900">
-                  <video
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                    srcObject={data.stream}
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
-                    👤 {data.playerName}
-                  </div>
-                  <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
-                    <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                    STREAMING
+            {Object.entries(remoteStreams).map(([remoteUserId, data]) => {
+              const isSpeaking = speakingUsers.has(remoteUserId);
+              const volume = volumeLevels[remoteUserId] || 0;
+              const volumePercent = Math.min(100, volume);
+              
+              return (
+                <div key={remoteUserId} className="w-full">
+                  <div className={`bg-black rounded-lg overflow-hidden shadow-lg transition-all ${isSpeaking ? 'ring-2 ring-green-400 scale-105' : 'ring-1 ring-gray-600'}`}>
+                    <div className="relative w-full aspect-video bg-gray-900">
+                      <video
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover"
+                        srcObject={data.stream}
+                      />
+                      {/* Speaking indicator */}
+                      {isSpeaking && (
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">
+                          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                          SPEAKING
+                        </div>
+                      )}
+                      
+                      {/* Streaming status */}
+                      {!isSpeaking && (
+                        <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                          STREAMING
+                        </div>
+                      )}
+                      
+                      {/* Player name */}
+                      <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
+                        👤 {data.playerName}
+                      </div>
+
+                      {/* Volume visualization bar */}
+                      <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
+                        <div className="w-12 h-1 bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${
+                              volumePercent > 70 ? 'bg-red-500' : volumePercent > 40 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${volumePercent}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-white bg-black/60 px-1 rounded">{volumePercent}%</span>
+                      </div>
+                    </div>
+                    
+                    {/* Volume control slider */}
+                    <div className="bg-gray-800 p-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-300 min-w-6">🔊</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={remotePeerVolumes[remoteUserId] || 100}
+                        onChange={(e) => {
+                          const newVolume = parseInt(e.target.value) / 100;
+                          setRemotePeerVolumes((prev) => ({
+                            ...prev,
+                            [remoteUserId]: newVolume,
+                          }));
+                        }}
+                        className="flex-1 h-1 bg-gray-600 rounded accent-blue-500 cursor-pointer"
+                        title="Adjust participant volume"
+                      />
+                      <span className="text-xs text-gray-300 min-w-6 text-right">{Math.round((remotePeerVolumes[remoteUserId] || 1) * 100)}%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

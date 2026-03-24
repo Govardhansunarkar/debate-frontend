@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { endDebate } from "../services/api";
+import { stopSpeech } from "../services/aiDebateService";
 import { socket } from "../services/socket";
 import VideoStream from "../components/VideoStream";
 import AdvancedSpeechRecognition from "../components/AdvancedSpeechRecognition";
@@ -256,7 +257,16 @@ export default function DebateRoom() {
 
   const handleEndDebate = async () => {
     console.log('[DebateRoom] handleEndDebate called');
+    
+    // ⏸️ STOP AI IMMEDIATELY
+    console.log('[DebateRoom] 🛑 Stopping AI speech immediately...');
+    stopSpeech();  // Stop any ongoing text-to-speech
+    
+    // Disable debate mode to stop all speech recognition and AI processing
     setIsActive(false);
+    
+    // Give a tiny delay to let the speech stop properly
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     console.log('[DebateRoom] Ending debate. Speeches:', speeches);
     console.log('[DebateRoom] Metrics:', debateMetrics);
@@ -286,6 +296,7 @@ export default function DebateRoom() {
     }
     
     // Navigate to results page
+    console.log('[DebateRoom] ✅ Navigating to results page...');
     navigate(`/results/${debateId}`);
   };
 
@@ -343,45 +354,49 @@ export default function DebateRoom() {
               </div>
             </div>
 
-            {/* Animated AI Avatar - TOP */}
-            <div className="flex items-center justify-center mb-6 mt-2">
-              <div className="relative w-40 h-40 flex items-center justify-center">
-                {/* Animated Background Glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
-                
-                {/* Inner Circle with Animated Border */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
-                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                    {/* AI Avatar Icon */}
-                    <div className="text-6xl animate-bounce" style={{ animationDuration: '2s' }}>
-                      🤖
+            {/* Animated AI Avatar - ONLY FOR AI DEBATES */}
+            {isAIDebate && (
+              <>
+                <div className="flex items-center justify-center mb-6 mt-2">
+                  <div className="relative w-40 h-40 flex items-center justify-center">
+                    {/* Animated Background Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
+                    
+                    {/* Inner Circle with Animated Border */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
+                      <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                        {/* AI Avatar Icon */}
+                        <div className="text-6xl animate-bounce" style={{ animationDuration: '2s' }}>
+                          🤖
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Orbiting Elements */}
+                    <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-2 h-2 bg-purple-400 rounded-full"></div>
+                      <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-2 h-2 bg-pink-400 rounded-full"></div>
+                    </div>
+
+                    {/* Thinking Indicator */}
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                      <div className="flex gap-1 items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Orbiting Elements */}
-                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-2 h-2 bg-blue-400 rounded-full"></div>
-                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-2 h-2 bg-purple-400 rounded-full"></div>
-                  <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-2 h-2 bg-pink-400 rounded-full"></div>
+                {/* Status Text for AI Debates */}
+                <div className="text-center mb-4">
+                  <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
+                  <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
                 </div>
-
-                {/* Thinking Indicator */}
-                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                  <div className="flex gap-1 items-center justify-center">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Text */}
-            <div className="text-center mb-4">
-              <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
-              <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
-            </div>
+              </>
+            )}
 
             {/* Video Stream Component - ONLY FOR USER DEBATES */}
             {!isAIDebate && (
@@ -397,16 +412,26 @@ export default function DebateRoom() {
             )}
 
             {/* Advanced Speech Recognition Component */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200 flex-1">
-            <AdvancedSpeechRecognition
-              isActive={isActive}
-              debateId={debateId}
-              topic={topic}
-              onSpeechEnd={handleTranscript}
-              socket={socket}
-              roomType={roomType}
-            />
-            </div>
+            {/* ⚡ Only show for AI Debate rooms */}
+            {isAIDebate && (
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200 flex-1">
+              <AdvancedSpeechRecognition
+                isActive={isActive}
+                debateId={debateId}
+                topic={topic}
+                onSpeechEnd={handleTranscript}
+                socket={socket}
+                roomType={roomType}
+              />
+              </div>
+            )}
+
+            {/* User-Only Debate Instructions */}
+            {!isAIDebate && isActive && (
+              <div className="bg-blue-50 rounded-xl shadow-md p-4 mb-4 border-2 border-blue-300">
+                <p className="text-center text-blue-700 font-semibold">🎤 Speak directly - your voice will be heard by other participants in real-time</p>
+              </div>
+            )}
 
             {/* Message Input */}
             <div className="flex gap-2 mb-4">
@@ -470,9 +495,9 @@ export default function DebateRoom() {
 
           {/* Sidebar - Players & Info */}
           <div className="lg:col-span-1">
-            {/* Players List */}
+            {/* Players List & Live Leaderboard */}
             <div className="bg-white rounded-lg shadow p-3 mb-3 sticky top-6">
-              <h3 className="font-semibold text-sm mb-2">👥 Participants</h3>
+              <h3 className="font-semibold text-sm mb-2">👥 Participants {!isAIDebate && isActive && '(Live Leaderboard)'}</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {/* You */}
                 <div className="flex items-center gap-2 p-2 bg-green-50 rounded border-2 border-green-200">
@@ -485,6 +510,12 @@ export default function DebateRoom() {
                       {localStorage.getItem("playerName")}
                     </p>
                   </div>
+                  {/* Show points for user-only debates */}
+                  {!isAIDebate && (
+                    <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded font-bold">
+                      {Math.max(0, speeches.filter(s => s.speaker === "user").reduce((sum, s) => sum + (s.points || 0), 0))} pts
+                    </span>
+                  )}
                   <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded">
                     Online
                   </span>
@@ -492,7 +523,7 @@ export default function DebateRoom() {
 
                 {/* Other Players / AI Opponent */}
                 {isAIDebate ? (
-                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded">
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                       🤖
                     </div>
@@ -500,6 +531,10 @@ export default function DebateRoom() {
                       <p className="text-sm font-semibold">AI Opponent</p>
                       <p className="text-xs text-gray-600">Artificial Intelligence</p>
                     </div>
+                    {/* Show AI points */}
+                    <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-bold">
+                      {Math.max(0, speeches.filter(s => s.speaker === "ai").reduce((sum, s) => sum + (s.points || 0), 0))} pts
+                    </span>
                     <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
                       Online
                     </span>
@@ -509,20 +544,30 @@ export default function DebateRoom() {
                     Waiting for other players...
                   </p>
                 ) : (
-                  players.map((player, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                        {player.playerName?.[0] || "?"}
+                  players.map((player, idx) => {
+                    // Calculate points for this player (from speeches)
+                    const playerPoints = Math.max(0, speeches.filter(s => s.speaker === player.playerName).reduce((sum, s) => sum + (s.points || 0), 0));
+                    return (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          {player.playerName?.[0] || "?"}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold">{player.playerName || "Player"}</p>
+                          <p className="text-xs text-gray-600">Participant</p>
+                        </div>
+                        {/* Show live points in user-only debates */}
+                        {!isAIDebate && (
+                          <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-bold">
+                            {playerPoints} pts
+                          </span>
+                        )}
+                        <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                          Online
+                        </span>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold">{player.playerName || "Player"}</p>
-                        <p className="text-xs text-gray-600">Participant</p>
-                      </div>
-                      <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
-                        Online
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

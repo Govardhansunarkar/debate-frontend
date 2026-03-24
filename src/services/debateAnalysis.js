@@ -49,7 +49,7 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
       speeches: formattedSpeeches,
       topic: topic,
     }, {
-      timeout: 45000  // 45 second timeout to allow backend processing
+      timeout: 20000  // Reduced from 45s to 20s - better UX, show results faster
     });
 
     console.log('[getDebateFeedback] ✅ Response received:', {
@@ -142,6 +142,133 @@ export const trackDebateMetrics = (speeches) => {
     averageWordCount: metrics.length > 0 ? Math.round(totalWords / metrics.length) : 0,
     totalSpeeches: metrics.length,
     speeches: metrics,
+  };
+};
+
+// ⚡ Generate individual per-user feedback for multi-user debates
+export const generatePerUserFeedback = (speeches, allPlayers = []) => {
+  if (!speeches || speeches.length === 0) {
+    return {};
+  }
+
+  // Get unique speakers
+  const speakers = [...new Set(speeches.map(s => s.speaker).filter(s => s && s !== "ai"))];
+  
+  const userFeedback = {};
+
+  speakers.forEach(playerName => {
+    // Get this player's speeches
+    const playerSpeeches = speeches.filter(s => s.speaker === playerName);
+    
+    if (playerSpeeches.length === 0) {
+      return;
+    }
+
+    // Calculate metrics
+    const totalWords = playerSpeeches.reduce((sum, s) => {
+      const words = (s.text || "").split(" ").filter(w => w).length;
+      return sum + words;
+    }, 0);
+
+    const totalPoints = playerSpeeches.reduce((sum, s) => sum + (s.points || 0), 0);
+    const avgWordCount = Math.round(totalWords / playerSpeeches.length);
+    const turnCount = playerSpeeches.length;
+    const avgQuality = playerSpeeches.length > 0
+      ? Math.round(playerSpeeches.reduce((sum, s) => sum + (s.qualityScore || 0), 0) / playerSpeeches.length)
+      : 0;
+
+    // Analyze strengths and weaknesses
+    const strengths = [];
+    const weaknesses = [];
+    const improvements = [];
+
+    // Check for evidence-based arguments
+    const evidenceCount = playerSpeeches.filter(s => {
+      const text = (s.text || "").toLowerCase();
+      return text.includes("study") || text.includes("research") || text.includes("data") || text.includes("fact");
+    }).length;
+
+    if (evidenceCount > turnCount / 2) {
+      strengths.push("Uses evidence and data to support arguments");
+    }
+
+    if (avgWordCount > 100) {
+      strengths.push(`Provides detailed responses (avg ${avgWordCount} words per turn)`);
+    }
+
+    if (avgQuality > 60) {
+      strengths.push("Demonstrates strong logical reasoning");
+    }
+
+    if (avgWordCount < 30) {
+      weaknesses.push("Responses are too brief - elaborate more");
+    }
+
+    if (avgQuality < 40) {
+      weaknesses.push("Consider supporting arguments with evidence");
+    }
+
+    if (turnCount > 3) {
+      improvements.push("Great participation! Keep engaging consistently");
+    } else {
+      improvements.push("Aim to contribute more turns in future debates");
+    }
+
+    const overallScore = Math.min(100, Math.round((totalPoints / turnCount + avgQuality) / 2));
+
+    userFeedback[playerName] = {
+      playerName,
+      stats: {
+        turns: turnCount,
+        totalWords,
+        totalPoints,
+        avgWordCount,
+        avgQuality,
+      },
+      analysis: {
+        summary: `Great debate! You made ${turnCount} points with a score of ${overallScore}/100.`,
+        strengths: strengths.length > 0 ? strengths : ["Participated actively"],
+        weaknesses: weaknesses.length > 0 ? weaknesses : ["Keep improving"],
+        improvements: improvements.length > 0 ? improvements : ["Practice makes perfect!"],
+        overallScore
+      }
+    };
+  });
+
+  return userFeedback;
+};
+
+// ⚡ Quick fallback feedback generator - provides instant feedback if API is slow
+export const generateQuickFeedback = (speeches) => {
+  // Generate basic feedback instantly without waiting for NVIDIA API
+  const metrics = trackDebateMetrics(speeches);
+  
+  const strengths = [];
+  const weaknesses = [];
+  const improvements = [];
+
+  // Analyze speech patterns
+  speeches.forEach((speech, idx) => {
+    if (speech?.points > 50) strengths.push(`Strong argument in turn ${idx + 1}`);
+    if (speech?.wordCount > 150) strengths.push(`Good elaboration with ${speech.wordCount} words`);
+    if (speech?.wordCount < 20) weaknesses.push(`Turn ${idx + 1} was too brief`);
+    if (speech?.duration < 3) improvements.push(`Speak longer to build stronger arguments`);
+  });
+
+  return {
+    success: true,
+    openai: {
+      analysis: {
+        summary: `Great job! You delivered ${metrics.totalSpeeches} speeches with ${metrics.totalPoints} total points.`,
+        strengths: strengths.length > 0 ? strengths : ["Participated in debate"],
+        weaknesses: weaknesses.length > 0 ? weaknesses : ["None noticed"],
+        improvements: improvements.length > 0 ? improvements : ["Keep practicing!"],
+        overallScore: Math.min(95, Math.round((metrics.totalPoints / metrics.totalSpeeches) * 2))
+      },
+      source: "QUICK_FALLBACK",
+      isGenuineLLM: false,
+      warning: "Quick feedback generated - AI analysis still loading in background"
+    }
   };
 };
 

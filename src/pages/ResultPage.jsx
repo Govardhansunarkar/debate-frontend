@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import FeedbackReport from "../components/FeedbackReport";
 import SimpleFeedback from "../components/SimpleFeedback";
-import { getDebateFeedback, simplifyFeedback } from "../services/debateAnalysis";
+import { getDebateFeedback, simplifyFeedback, generateQuickFeedback, generatePerUserFeedback } from "../services/debateAnalysis";
 
 export default function ResultPage() {
   const { debateId } = useParams();
@@ -11,6 +11,7 @@ export default function ResultPage() {
   const [debate, setDebate] = useState(null);
   const [results, setResults] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [perUserFeedback, setPerUserFeedback] = useState({});
   const [speeches, setSpeeches] = useState([]);
   const [debateMetrics, setDebateMetrics] = useState(null);
   const [topic, setTopic] = useState(""); 
@@ -49,26 +50,45 @@ export default function ResultPage() {
           const parsedSpeeches = JSON.parse(savedSpeeches);
           setSpeeches(parsedSpeeches);
 
-          // Fetch AI feedback
-          console.log('[ResultPage] Fetching AI feedback...');
-          setFetchingFeedback(true);
-          const feedbackData = await getDebateFeedback(
-            debateId,
-            savedTopic || "General Debate",
-            parsedSpeeches
-          );
-          console.log('[ResultPage] AI feedback received:', feedbackData);
-          
-          // For AI debates, simplify the feedback for better UX
+          // ⚡ OPTIMIZATION: Show instant feedback IMMEDIATELY
           if (savedRoomType === 'ai') {
-            const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
-            console.log('[ResultPage] Simplified feedback:', simplifiedFeedback);
-            setFeedback(simplifiedFeedback);
+            // AI Debate: Use quick fallback feedback
+            const quickFeedback = generateQuickFeedback(parsedSpeeches);
+            const simplifiedQuickFeedback = simplifyFeedback(quickFeedback, parsedSpeeches);
+            console.log('[ResultPage] Quick fallback feedback loaded immediately:', simplifiedQuickFeedback);
+            setFeedback(simplifiedQuickFeedback);
           } else {
-            setFeedback(feedbackData);
+            // User-Only Debate: Generate per-user feedback instantly
+            const perUserFeedbackData = generatePerUserFeedback(parsedSpeeches);
+            console.log('[ResultPage] Per-user feedback generated:', perUserFeedbackData);
+            setPerUserFeedback(perUserFeedbackData);
+            setFeedback(null); // No single feedback for user debates
           }
-          
-          setFetchingFeedback(false);
+
+          // ⚡ For AI debates only: Fetch REAL AI feedback in background
+          if (savedRoomType === 'ai') {
+            setFetchingFeedback(true);
+            (async () => {
+              try {
+                console.log('[ResultPage] ⏳ Fetching full AI feedback in background...');
+                const feedbackData = await getDebateFeedback(
+                  debateId,
+                  savedTopic || "General Debate",
+                  parsedSpeeches
+                );
+                console.log('[ResultPage] ✅ Full AI feedback received:', feedbackData);
+                
+                const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
+                console.log('[ResultPage] Simplified feedback:', simplifiedFeedback);
+                setFeedback(simplifiedFeedback);
+              } catch (err) {
+                console.error('[ResultPage] Error fetching feedback:', err);
+                // Keep using quick feedback if API fails
+              } finally {
+                setFetchingFeedback(false);
+              }
+            })();
+          }
         } else {
           console.warn('[ResultPage] No speeches found in localStorage!');
         }
@@ -88,6 +108,7 @@ export default function ResultPage() {
             ? 'http://localhost:8000/api'
             : 'https://debate-backend-paro.onrender.com/api';
           
+          // Non-blocking async fetch
           Promise.all([
             fetch(`${BASE_URL}/debates/${debateId}`)
               .then(res => {
@@ -175,8 +196,85 @@ export default function ResultPage() {
           ))}
         </div>
 
-        {/* AI Feedback Report */}
-        <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
+        {/* Per-User Feedback for User-Only Debates */}
+        {!isAIDebate && Object.keys(perUserFeedback).length > 0 && (
+          <div className="space-y-6 mb-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">📊 Individual Feedback</h2>
+            
+            {Object.values(perUserFeedback).map((userFeedback, idx) => (
+              <div key={idx} className="bg-white rounded-2xl p-8 md:p-10 shadow-xl border-4 border-blue-200">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                    {userFeedback.playerName?.[0] || "?"}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-800">{userFeedback.playerName}</h3>
+                    <p className="text-lg font-semibold text-purple-600">Score: {userFeedback.analysis.overallScore}/100</p>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600">{userFeedback.stats.turns}</p>
+                    <p className="text-xs text-gray-600">Turns</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-600">{userFeedback.stats.totalPoints}</p>
+                    <p className="text-xs text-gray-600">Points</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{userFeedback.stats.avgWordCount}</p>
+                    <p className="text-xs text-gray-600">Avg Words</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-pink-600">{userFeedback.stats.avgQuality}</p>
+                    <p className="text-xs text-gray-600">Quality</p>
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-bold text-gray-700 mb-2">💡 Summary</p>
+                    <p className="text-gray-600 italic">{userFeedback.analysis.summary}</p>
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-green-700 mb-2">✅ Strengths</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {userFeedback.analysis.strengths.map((strength, i) => (
+                        <li key={i} className="text-green-700">{strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-orange-700 mb-2">⚠️ Areas for Improvement</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {userFeedback.analysis.weaknesses.map((weakness, i) => (
+                        <li key={i} className="text-orange-700">{weakness}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-blue-700 mb-2">🎯 Next Steps</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {userFeedback.analysis.improvements.map((improvement, i) => (
+                        <li key={i} className="text-blue-700">{improvement}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* AI Feedback Report (AI Debates Only) */}
+        {isAIDebate && (
+          <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
           <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Feedback</h2>
           {fetchingFeedback ? (
             <div className="text-center py-8">
@@ -192,6 +290,7 @@ export default function ResultPage() {
             <p className="text-gray-600">No feedback available yet.</p>
           )}
         </div>
+        )}
 
         {/* Debate Messages */}
         {debate?.messages && (

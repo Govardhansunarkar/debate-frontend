@@ -20,6 +20,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   const silenceTimeoutRef = useRef(null);  // Auto-submit after 5s silence
   const inactivityTimeoutRef = useRef(null);  // AI counter-attack after 20s inactivity
   const lastActivityRef = useRef(Date.now());
+  const noSpeechCounterRef = useRef(0);  // Retry counter for no-speech errors
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -32,9 +33,16 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Stop after each phrase
+    recognition.continuous = true; // Keep listening for longer phrases
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    
+    // Increase abort time for better speech detection
+    try {
+      recognition.maxAlternatives = 1;
+    } catch (e) {
+      // Some browsers don't support this property
+    }
 
     let interimTranscript = "";
 
@@ -69,14 +77,13 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
 
     recognition.onerror = (event) => {
       console.error("[SpeechRecognition] Error:", event.error);
-      setIsListening(false);
       
       let errorMsg = "Speech error occurred";
       
       // Map error codes to user-friendly messages
       const errorMap = {
         "network": "🌐 Network error - Please check your internet connection",
-        "no-speech": "🔇 No speech detected - Please speak louder or move closer to the microphone",
+        "no-speech": "🔇 No speech detected - Please speak louder",
         "audio-capture": "🎤 Microphone not accessible - Check browser permissions",
         "not-allowed": "❌ Microphone permission denied - Allow microphone in browser settings",
         "service-not-allowed": "🔒 Speech service not allowed in this context",
@@ -85,21 +92,40 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       };
       
       errorMsg = errorMap[event.error] || `Speech error: ${event.error}`;
-      setSubmissionError(errorMsg);
       console.warn("[SpeechRecognition] Error message:", errorMsg);
       
-      // Retry on network/no-speech errors
-      if (event.error === "network" || event.error === "no-speech") {
-        console.log(`[SpeechRecognition] Retrying after ${event.error} error...`);
-        setTimeout(() => {
-          if (isActive) {
-            try {
-              recognition.start();
-            } catch (e) {
-              console.error("[SpeechRecognition] Failed to restart:", e);
+      // Handle "no-speech" error - auto retry without showing error
+      if (event.error === "no-speech") {
+        noSpeechCounterRef.current++;
+        console.log(`[SpeechRecognition] No-speech error count: ${noSpeechCounterRef.current}/2`);
+        
+        if (noSpeechCounterRef.current <= 2 && isActive) {
+          // Auto-restart without showing error to user
+          console.log("[SpeechRecognition] Auto-restarting speech recognition...");
+          setTimeout(() => {
+            if (isActive) {
+              try {
+                setIsListening(true);
+                recognition.start();
+              } catch (e) {
+                console.error("[SpeechRecognition] Failed to restart:", e);
+                setSubmissionError(errorMsg);
+                setIsListening(false);
+              }
             }
-          }
-        }, 2000);
+          }, 500); // Shorter retry delay for better UX
+          return;
+        } else {
+          // Max retries exceeded, show error and reset
+          setSubmissionError(errorMsg);
+          setIsListening(false);
+          noSpeechCounterRef.current = 0;
+        }
+      } else {
+        // Other errors - show message and don't retry
+        setSubmissionError(errorMsg);
+        setIsListening(false);
+        noSpeechCounterRef.current = 0;
       }
     };
 
@@ -199,8 +225,11 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
         listeningStartTimeRef.current = null;
       } else {
         console.warn("[SpeechRecognition] No speech captured");
-        setUserTranscript("🔇 No speech detected");
-        setSubmissionError("🔇 No speech detected - Please check:\n1. Microphone is connected\n2. Browser has microphone permission\n3. You spoke clearly\n\nTry again!");
+        setUserTranscript("🔇 Listening...");
+        // Don't show error message if listening is still active
+        if (!isListening) {
+          setSubmissionError("🔇 No speech - Please speak clearly and try again");
+        }
         listeningStartTimeRef.current = null;
       }
     };
@@ -249,7 +278,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
     try {
       // CHECK IF DEBATE IS STILL ACTIVE - PREVENTS AI RESPONSE AFTER TIMEOUT
       if (!isActive) {
-        console.warn("[SpeechRecognition] ⏱️ Debate has ended! Stopping AI response");
+        console.warn("[SpeechRecognition] ⏱️ Debate has ended! Stopping AI response immediately");
+        // Emergency stop
         setIsSubmitting(false);
         setIsAISpeaking(false);
         return;
@@ -311,10 +341,18 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
           setAiPoints(prev => prev + response.points);
         }
 
-        // Speak the AI response (always resolves, won't throw)
-        console.log("[SpeechRecognition] Speaking AI response:", aiText);
-        await speakText(aiText, { rate: 0.95, pitch: 1 });
-        console.log("[SpeechRecognition] Speech completed successfully");
+        // Speak the AI response ONLY in AI debate rooms (not in user-only debates)
+        // User-only debates use real voice from microphone via PeerJS, not TTS
+        if (roomType === 'ai' && isActive) {
+          console.log("[SpeechRecognition] Speaking AI response (AI Debate):", aiText);
+          await speakText(aiText, { rate: 0.95, pitch: 1 });
+          console.log("[SpeechRecognition] Speech completed successfully");
+        } else if (roomType === 'ai' && !isActive) {
+          console.log("[SpeechRecognition] ⏸️ Debate ended, skipping AI speech");
+          stopSpeech();
+        } else {
+          console.log("[SpeechRecognition] 🎤 User-Only Debate: Skipping TTS (using real voice via WebRTC)");
+        }
       } else {
         console.error("[SpeechRecognition] API returned error:", response.error);
         setSubmissionError(`Failed to get AI response: ${response.error}`);
@@ -366,6 +404,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
 
     console.log("[SpeechRecognition] 🎤 Checking microphone permissions...");
     setSubmissionError(null);
+    noSpeechCounterRef.current = 0; // Reset retry counter
     
     // Clear old timers when starting new listening session
     if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
