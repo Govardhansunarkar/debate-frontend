@@ -331,14 +331,56 @@ export default function DebateRoom() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Video Section - Main*/}
-          <div className="lg:col-span-3">
-            {/* Timer */}
-            <div className="text-center mb-4 bg-white p-4 rounded-xl shadow-md border-2 border-blue-200">
-              <p className="text-5xl md:text-6xl font-bold text-blue-600">
-                {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
-              </p>
-              <p className="text-gray-600 text-xs md:text-sm mt-2 font-semibold">⏱️ Time Remaining</p>
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 flex flex-col h-full">
+            {/* Animated AI Avatar - TOP */}
+            <div className="flex items-center justify-center mb-6 mt-2">
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                {/* Animated Background Glow */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
+                
+                {/* Inner Circle with Animated Border */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
+                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                    {/* AI Avatar Icon */}
+                    <div className="text-6xl animate-bounce" style={{ animationDuration: '2s' }}>
+                      🤖
+                    </div>
+                  </div>
+                </div>
+
+                {/* Orbiting Elements */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-2 h-2 bg-pink-400 rounded-full"></div>
+                </div>
+
+                {/* Thinking Indicator */}
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                  <div className="flex gap-1 items-center justify-center">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Timer - COMPACT at TOP */}
+            <div className="text-center mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-xl shadow-md border-2 border-blue-200">
+              <div className="flex items-center justify-center gap-3">
+                <p className="text-3xl md:text-4xl font-bold text-blue-600">
+                  {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
+                </p>
+                <p className="text-gray-600 text-xs font-semibold">⏱️ Time Left</p>
+              </div>
+            </div>
+
+            {/* Status Text */}
+            <div className="text-center mb-4">
+              <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
+              <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
             </div>
 
             {/* Video Stream Component - ONLY FOR USER DEBATES */}
@@ -355,7 +397,7 @@ export default function DebateRoom() {
             )}
 
             {/* Advanced Speech Recognition Component */}
-            <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200 flex-1">
             <AdvancedSpeechRecognition
               isActive={isActive}
               debateId={debateId}
@@ -366,85 +408,8 @@ export default function DebateRoom() {
             />
             </div>
 
-            {/* Control Buttons */}
-            <div className="flex gap-3 flex-wrap mb-4">
-              {!isActive ? (
-                <button
-                  onClick={handleStart}
-                  className="flex-1 min-w-28 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold text-sm transition"
-                >
-                  🎬 Start Debate
-                </button>
-              ) : (
-                <button
-                  onClick={handleEndDebate}
-                  className="flex-1 min-w-28 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold text-sm transition"
-                >
-                  🛑 End Debate
-                </button>
-              )}
-              {!isAIDebate && (
-                <button
-                  onClick={handleRaiseHand}
-                  className={`flex-1 min-w-28 py-2 rounded-lg font-semibold text-white transition text-sm ${
-                    handRaised
-                      ? "bg-orange-500 hover:bg-orange-600"
-                      : "bg-blue-500 hover:bg-blue-600"
-                  }`}
-                >
-                  <span>{handRaised ? "👋 Lower Hand" : "✋ Raise Hand"}</span>
-                </button>
-              )}
-              <button
-                onClick={handleLeaveDebate}
-                className="flex-1 min-w-28 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg font-semibold text-sm transition"
-              >
-                🚪 Leave Debate
-              </button>
-            </div>
-
-            {/* Animated AI Avatar - Center Focus */}
-            <div className="flex-1 flex items-center justify-center mt-6 mb-6">
-              <div className="relative w-48 h-48 flex items-center justify-center">
-                {/* Animated Background Glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
-                
-                {/* Inner Circle with Animated Border */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
-                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                    {/* AI Avatar Icon */}
-                    <div className="text-7xl animate-bounce" style={{ animationDuration: '2s' }}>
-                      🤖
-                    </div>
-                  </div>
-                </div>
-
-                {/* Orbiting Elements */}
-                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-3 h-3 bg-blue-400 rounded-full"></div>
-                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-3 h-3 bg-purple-400 rounded-full"></div>
-                  <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-3 h-3 bg-pink-400 rounded-full"></div>
-                </div>
-
-                {/* Thinking Indicator */}
-                <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
-                  <div className="flex gap-1 items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Text */}
-            <div className="text-center text-sm text-gray-600 mb-3">
-              <p className="font-semibold">🎤 Ready to debate?</p>
-              <p className="text-xs text-gray-500">Click the microphone to speak with AI</p>
-            </div>
-
-            {/* Message Input - Simplified */}
-            <div className="flex gap-2 mt-2">
+            {/* Message Input */}
+            <div className="flex gap-2 mb-4">
               <input
                 type="text"
                 value={input}
@@ -454,14 +419,51 @@ export default function DebateRoom() {
                 placeholder={
                   isActive ? "Type your argument..." : "Start the debate to send messages"
                 }
-                className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                className="flex-1 px-3 py-2 text-sm border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={!isActive}
-                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 text-sm rounded-lg font-semibold transition"
+                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 text-sm rounded-lg font-semibold transition shadow-md"
               >
                 Send
+              </button>
+            </div>
+
+            {/* Control Buttons - BOTTOM (Full Width, Better Spacing) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+              {!isActive ? (
+                <button
+                  onClick={handleStart}
+                  className="col-span-1 md:col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg transform hover:scale-105"
+                >
+                  🎬 Start Debate
+                </button>
+              ) : (
+                <button
+                  onClick={handleEndDebate}
+                  className="col-span-1 md:col-span-2 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg transform hover:scale-105"
+                >
+                  🛑 End Debate
+                </button>
+              )}
+              {!isAIDebate && (
+                <button
+                  onClick={handleRaiseHand}
+                  className={`col-span-1 py-3 rounded-lg font-bold text-white transition shadow-md text-sm transform hover:scale-105 ${
+                    handRaised
+                      ? "bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
+                      : "bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+                  }`}
+                >
+                  <span>{handRaised ? "👋" : "✋"}</span>
+                </button>
+              )}
+              <button
+                onClick={handleLeaveDebate}
+                className="col-span-1 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white py-3 rounded-lg font-bold text-sm transition shadow-md transform hover:scale-105"
+              >
+                🚪
               </button>
             </div>
           </div>
