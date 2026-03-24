@@ -23,7 +23,7 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     // For production, use Render URL; for development use localhost
     const isProduction = import.meta.env.MODE === 'production';
     const peerHost = isProduction 
-      ? 'ai-debate-arena-backend-9zur.onrender.com'
+      ? 'debate-backend-paro.onrender.com'
       : (import.meta.env.VITE_PEERJS_HOST || 'localhost');
     const peerPort = isProduction 
       ? 9000  // Use PeerJS port directly
