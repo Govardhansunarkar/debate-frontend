@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_URL = "https://ai-debate-arena-backend-9zur.onrender.com/api";
+// Use localhost for development, production URL for production
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3001/api'
+  : 'https://debate-backend-paro.onrender.com/api';
 
 // Format duration in seconds to MM:SS or Ss format
 export const formatDuration = (seconds) => {
@@ -13,10 +16,15 @@ export const formatDuration = (seconds) => {
 // Get comprehensive debate feedback from NVIDIA LLM
 export const getDebateFeedback = async (debateId, topic, speeches) => {
   try {
+    const currentAPI_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:3001/api'
+      : 'https://debate-backend-paro.onrender.com/api';
+    
     console.log('[getDebateFeedback] 🚀 Requesting LLM analysis for:', {
       debateId,
       topic,
-      totalSpeeches: speeches?.length || 0
+      totalSpeeches: speeches?.length || 0,
+      apiURL: currentAPI_URL
     });
 
     // Ensure we have speech data
@@ -37,7 +45,7 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
     console.log('[getDebateFeedback] 📝 Formatted speeches:', formattedSpeeches.length);
 
     // Call the NVIDIA LLM-powered analysis endpoint
-    const response = await axios.post(`${API_URL}/debates/analyze-openai`, {
+    const response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
       speeches: formattedSpeeches,
       topic: topic,
     });

@@ -84,14 +84,18 @@ export default function ResultPage() {
         // Only try to fetch from API if this is a BACKEND debate (UUID-based, not local)
         if (!isLocalDebate) {
           console.log('[ResultPage] Fetching from backend API...');
+          const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001/api'
+            : 'https://debate-backend-paro.onrender.com/api';
+          
           Promise.all([
-            fetch(`https://ai-debate-arena-backend-9zur.onrender.com/api/debates/${debateId}`)
+            fetch(`${BASE_URL}/debates/${debateId}`)
               .then(res => {
                 if (res.ok) return res.json();
                 return null;
               })
               .catch(() => null),
-            fetch(`https://ai-debate-arena-backend-9zur.onrender.com/api/debates/${debateId}/results`)
+            fetch(`${BASE_URL}/debates/${debateId}/results`)
               .then(res => {
                 if (res.ok) return res.json();
                 return null;
