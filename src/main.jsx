@@ -4,7 +4,8 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App";
 import "./index.css";
 
-// Get Google Client ID from environment
+// Get Google Client ID from environment variables
+// Production: Set VITE_GOOGLE_CLIENT_ID in Vercel
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
