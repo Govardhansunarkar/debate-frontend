@@ -31,14 +31,13 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     
     // PeerJS configuration - optimized for Render production
     const peerConfig = {
+      host: isProduction ? 'debate-backend-paro.onrender.com' : 'localhost',
       path: '/peerjs',
-      secure: window.location.protocol === 'https:', // Use HTTPS in production
-      debug: 2,
-      // Fixed: Removed host property to let PeerJS use the current window host automatically
-      // This solves 'WebSocket is closed before connection is established' errors
+      secure: true, // Always use secure for WebRTC in production/modern browsers
+      debug: 1,
       allow_discovery: false,
-      // Only set port for local dev, Render uses default HTTPS port
-      ...(isProduction ? {} : { port: 3001, host: 'localhost' }),
+      // Only set port for local dev
+      ...(isProduction ? {} : { port: 3001 }),
       config: {
         iceServers: [
           { urls: 'stun:stun1.l.google.com:19302' },
