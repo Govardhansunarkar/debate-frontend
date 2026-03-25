@@ -25,18 +25,14 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     // Create a unique peer ID for this user
     const peerId = `${debateId}_${userId}`;
     
-    // Get PeerJS server configuration
-    const isProduction = import.meta.env.MODE === 'production';
-    const peerHost = isProduction 
-      ? 'debate-backend-paro.onrender.com'
-      : 'localhost';
-    
-    // For production on Render: Use no specific port (defaults to 443 over HTTPS)
-    // Render's reverse proxy will route /peerjs requests appropriately
+    // PeerJS now runs on same port as Express via ExpressPeerServer
+    // No need to specify port - it auto-detects
     const peerConfig = {
-      host: peerHost,
-      path: "/peerjs",
-      secure: isProduction, // true for HTTPS, false for local HTTP
+      host: window.location.hostname === 'localhost' 
+        ? 'localhost' 
+        : 'debate-backend-paro.onrender.com',
+      path: '/peerjs',
+      secure: window.location.protocol === 'https:',
       debug: 2,
       allow_discovery: false,
       config: {
@@ -47,12 +43,12 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
       }
     };
     
-    // Add port only for local development
-    if (!isProduction) {
-      peerConfig.port = 9000;
+    // For local dev with separate port
+    if (window.location.hostname === 'localhost') {
+      peerConfig.port = 3001; // Same port as Express in local dev
     }
     
-    console.log(`🔗 PeerJS connecting to host=${peerConfig.host}, secure=${peerConfig.secure}, path=${peerConfig.path}`);
+    console.log(`🔗 PeerJS Config:`, peerConfig);
     
     const peer = new Peer(peerId, peerConfig);
 

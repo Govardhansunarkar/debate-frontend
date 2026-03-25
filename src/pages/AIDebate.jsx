@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import { validateTopic } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function AIDebate() {
+  const { user } = useAuth();
   const [difficulty, setDifficulty] = useState("medium");
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const [debateStarted, setDebateStarted] = useState(false);
   const [debateId, setDebateId] = useState("");
-  const [topicError, setTopicError] = useState("");  // NEW
-  const [topicValidating, setTopicValidating] = useState(false);  // NEW
+  const [topicError, setTopicError] = useState("");
+  const [topicValidating, setTopicValidating] = useState(false);
   const navigate = useNavigate();
 
   const difficulties = [

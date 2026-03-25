@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { createRoom, joinRoom, validateTopic } from "../services/api";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function PrivateRoom() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Create Room State
   const [createTopic, setCreateTopic] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [roomCode, setRoomCode] = useState("");
   const [roomCreated, setRoomCreated] = useState(false);
-  const [topicError, setTopicError] = useState("");  // NEW: Topic validation error
-  const [topicValidating, setTopicValidating] = useState(false);  // NEW: Validation in progress
+  const [topicError, setTopicError] = useState("");
+  const [topicValidating, setTopicValidating] = useState(false);
 
   // Join Room State
   const [joinCode, setJoinCode] = useState("");
@@ -46,7 +48,7 @@ export default function PrivateRoom() {
 
     const res = await createRoom(
       createTopic,
-      localStorage.getItem("playerName") || "Anonymous",
+      user?.name || "Anonymous",
       'user-only'  // Private rooms are for users to debate with each other
     );
 
@@ -71,8 +73,8 @@ export default function PrivateRoom() {
     setJoinLoading(true);
     const res = await joinRoom(
       joinCode,
-      localStorage.getItem("userId"),
-      localStorage.getItem("playerName")
+      user?.id,
+      user?.name
     );
 
     if (!res.success) {

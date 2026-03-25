@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { endDebate } from "../services/api";
 import { stopSpeech } from "../services/aiDebateService";
 import { socket } from "../services/socket";
+import { useAuth } from "../contexts/AuthContext";
 import VideoStream from "../components/VideoStream";
 import AdvancedSpeechRecognition from "../components/AdvancedSpeechRecognition";
 import { trackDebateMetrics, prepareDebateTranscript } from "../services/debateAnalysis";
@@ -10,6 +11,7 @@ import { trackDebateMetrics, prepareDebateTranscript } from "../services/debateA
 export default function DebateRoom() {
   const { debateId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [timer, setTimer] = useState(300);
@@ -59,8 +61,8 @@ export default function DebateRoom() {
 
     socket.emit("join-debate", {
       debateId,
-      userId: localStorage.getItem("userId"),
-      playerName: localStorage.getItem("playerName"),
+      userId: user?.id,
+      playerName: user?.name,
       roomType: isAI ? 'ai' : (matchType === 'team' ? 'team-debate' : 'user-only'),
       debateType: matchType === 'team' ? 'team-debate' : (isAI ? 'ai' : 'user-only'),
       team: teamAssignmentFromUrl || null, // Pass team assignment
@@ -260,8 +262,8 @@ export default function DebateRoom() {
     // Broadcast speech to other players
     socket.emit("send-message", {
       debateId,
-      userId: localStorage.getItem("userId"),
-      playerName: localStorage.getItem("playerName"),
+      userId: user?.id,
+      playerName: user?.name,
       text: `🎤 ${transcriptData.text}`,
     });
   };
@@ -270,8 +272,8 @@ export default function DebateRoom() {
     if (input.trim() && socket) {
       socket.emit("send-message", {
         debateId,
-        userId: localStorage.getItem("userId"),
-        playerName: localStorage.getItem("playerName"),
+        userId: user?.id,
+        playerName: user?.name,
         text: input,
       });
       setInput("");
@@ -283,14 +285,14 @@ export default function DebateRoom() {
       if (handRaised) {
         socket.emit("lower-hand", {
           debateId,
-          userId: localStorage.getItem("userId"),
-          playerName: localStorage.getItem("playerName"),
+          userId: user?.id,
+          playerName: user?.name,
         });
       } else {
         socket.emit("raise-hand", {
           debateId,
-          userId: localStorage.getItem("userId"),
-          playerName: localStorage.getItem("playerName"),
+          userId: user?.id,
+          playerName: user?.name,
         });
       }
       setHandRaised(!handRaised);
@@ -351,8 +353,8 @@ export default function DebateRoom() {
       // Notify other players
       socket.emit("player-left", {
         debateId,
-        userId: localStorage.getItem("userId"),
-        playerName: localStorage.getItem("playerName"),
+        userId: user?.id,
+        playerName: user?.name,
       });
 
       // Navigate back to home
@@ -500,8 +502,8 @@ export default function DebateRoom() {
               <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
                 <VideoStream
                   debateId={debateId}
-                  userId={localStorage.getItem("userId")}
-                  playerName={localStorage.getItem("playerName")}
+                  userId={user?.id}
+                  playerName={user?.name}
                   isAIDebate={isAIDebate}
                   participants={players}
                 />
@@ -599,12 +601,12 @@ export default function DebateRoom() {
                 {/* You */}
                 <div className="flex items-center gap-2 p-2 bg-green-50 rounded border-2 border-green-200">
                   <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {localStorage.getItem("playerName")?.[0] || "?"}
+                    {user?.name?.[0] || "?"}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold">You</p>
                     <p className="text-xs text-gray-600">
-                      {localStorage.getItem("playerName")}
+                      {user?.name}
                     </p>
                   </div>
                   {/* Show points for user-only debates */}

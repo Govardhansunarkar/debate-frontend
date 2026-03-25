@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function RandomMatch() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [waitTime, setWaitTime] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState("");
@@ -58,14 +60,11 @@ export default function RandomMatch() {
     setLoading(true);
     setWaitTime(0);
 
-    const userId = localStorage.getItem("userId");
-    const playerName = localStorage.getItem("playerName");
-
     console.log('[RandomMatch] Joining queue with type:', debateType, 'topic:', selectedTopic);
 
     socket.emit("join-queue", { 
-      userId, 
-      playerName,
+      userId: user?.id, 
+      playerName: user?.name,
       topic: selectedTopic,
       debateType: debateType // Pass debate type
     });
