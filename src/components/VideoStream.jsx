@@ -18,11 +18,14 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     );
   }
 
+  const uniqueRoomId = debateId ? debateId.toString().toLowerCase().replace(/[^a-z0-h0-9]/g, '') : Math.random().toString(36).substring(7);
+  const roomName = `SkillForceAIDebate_${uniqueRoomId}`;
+
   return (
     <div className="flex flex-col h-[600px] w-full bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-700 relative">
       <JitsiMeeting
         domain="meet.jit.si"
-        roomName={`SkillForceAI_Debate_${debateId}`}
+        roomName={roomName}
         configOverwrite={{
           startWithAudioMuted: false,
           disableModeratorIndicator: true,
@@ -30,6 +33,7 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
           enableEmailInStats: false,
           prejoinPageEnabled: false,
           enableNoisyMicDetection: true,
+          subject: 'Skill Force AI Debate',
           toolbarButtons: [
              'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
              'fodeviceselection', 'hangup', 'profile', 'chat', 'settings', 'raisehand',
