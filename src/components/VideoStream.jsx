@@ -25,30 +25,36 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     // Create a unique peer ID for this user
     const peerId = `${debateId}_${userId}`;
     
-    // Get PeerJS server from Render backend (uses same server as Express)
-    // For production, use Render URL; for development use localhost
+    // Get PeerJS server configuration
     const isProduction = import.meta.env.MODE === 'production';
     const peerHost = isProduction 
       ? 'debate-backend-paro.onrender.com'
-      : (import.meta.env.VITE_PEERJS_HOST || 'localhost');
-    const peerPort = isProduction 
-      ? 9000  // Use PeerJS port directly
-      : (import.meta.env.VITE_PEERJS_PORT ? parseInt(import.meta.env.VITE_PEERJS_PORT) : 9000);
-    const peerUseSsl = isProduction ? true : false;  // Use SSL for HTTPS domain
+      : 'localhost';
     
-    const peer = new Peer(peerId, {
+    // For production on Render: Use no specific port (defaults to 443 over HTTPS)
+    // Render's reverse proxy will route /peerjs requests appropriately
+    const peerConfig = {
       host: peerHost,
-      port: peerPort,
       path: "/peerjs",
-      secure: peerUseSsl,
-      debug: 2, // Show more debug info for troubleshooting
+      secure: isProduction, // true for HTTPS, false for local HTTP
+      debug: 2,
       allow_discovery: false,
       config: {
         iceServers: [
-          { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+          { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
+          { urls: ['stun:stun2.l.google.com:19302'] }
         ]
       }
-    });
+    };
+    
+    // Add port only for local development
+    if (!isProduction) {
+      peerConfig.port = 9000;
+    }
+    
+    console.log(`🔗 PeerJS connecting to host=${peerConfig.host}, secure=${peerConfig.secure}, path=${peerConfig.path}`);
+    
+    const peer = new Peer(peerId, peerConfig);
 
     peer.on("error", (err) => {
       console.warn("PeerJS Error:", err.type, err);

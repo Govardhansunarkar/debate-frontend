@@ -21,12 +21,25 @@ export default function DebateRoom() {
   const [roomType, setRoomType] = useState('user-only');  // Track room type
   const [speeches, setSpeeches] = useState([]); // Track all speeches
   const [debateMetrics, setDebateMetrics] = useState(null); // Debate stats
+  
+  // Team debate state
+  const [isTeamDebate, setIsTeamDebate] = useState(false);
+  const [teamSize, setTeamSize] = useState(null); // '2v2' or '3v3'
+  const [myTeam, setMyTeam] = useState(null); // 'FOR' or 'AGAINST'
+  const [teamFor, setTeamFor] = useState([]); // Team FOR players
+  const [teamAgainst, setTeamAgainst] = useState([]); // Team AGAINST players
+  const [turnOrder, setTurnOrder] = useState([]); // Turn order for team debates
+  const [currentTurnIndex, setCurrentTurnIndex] = useState(0); // Current turn
 
   useEffect(() => {
-    // Check if this is an AI debate
+    // Check if this is an AI debate or team debate
     const params = new URLSearchParams(window.location.search);
     const isAI = params.get('ai') === 'true';
     const topicFromUrl = params.get('topic');
+    const matchType = params.get('matchType');
+    const teamSizeFromUrl = params.get('teamSize');
+    const teamAssignmentFromUrl = params.get('teamAssignment');
+    
     setIsAIDebate(isAI);
     
     // Set topic from URL if available
@@ -34,16 +47,23 @@ export default function DebateRoom() {
       setTopic(decodeURIComponent(topicFromUrl));
     }
     
-    // Set room type based on URL parameter
+    // Set room type based on URL parameters
     if (isAI) {
       setRoomType('ai');
+    } else if (matchType === 'team') {
+      setRoomType('team-debate');
+      setIsTeamDebate(true);
+      setTeamSize(teamSizeFromUrl);
+      setMyTeam(teamAssignmentFromUrl);
     }
 
     socket.emit("join-debate", {
       debateId,
       userId: localStorage.getItem("userId"),
       playerName: localStorage.getItem("playerName"),
-      roomType: isAI ? 'ai' : 'user-only',
+      roomType: isAI ? 'ai' : (matchType === 'team' ? 'team-debate' : 'user-only'),
+      debateType: matchType === 'team' ? 'team-debate' : (isAI ? 'ai' : 'user-only'),
+      team: teamAssignmentFromUrl || null, // Pass team assignment
       topic: topicFromUrl ? decodeURIComponent(topicFromUrl) : 'Debate Topic'
     });
 
@@ -54,6 +74,18 @@ export default function DebateRoom() {
       // Update topic from server
       if (data.topic) {
         setTopic(data.topic);
+      }
+      
+      // Handle team debate data
+      if (data.debateType === 'team-debate') {
+        // Organize players by team
+        const forTeam = data.participants.filter(p => p.team === 'FOR');
+        const againstTeam = data.participants.filter(p => p.team === 'AGAINST');
+        
+        setTeamFor(forTeam);
+        setTeamAgainst(againstTeam);
+        setTurnOrder(data.turnOrder || []);
+        setCurrentTurnIndex(0);
       }
       
       if (data.participants && data.participants.length > 0) {
@@ -71,6 +103,16 @@ export default function DebateRoom() {
     });
 
     socket.on("player-joined", (data) => {
+      // Handle team debate player joins
+      if (data.debateType === 'team-debate') {
+        const forTeam = data.participants.filter(p => p.team === 'FOR');
+        const againstTeam = data.participants.filter(p => p.team === 'AGAINST');
+        
+        setTeamFor(forTeam);
+        setTeamAgainst(againstTeam);
+        setTurnOrder(data.turnOrder || []);
+      }
+      
       // Update players list with all participants from this event
       setPlayers((prev) => {
         if (data.participants) {
@@ -353,6 +395,61 @@ export default function DebateRoom() {
                 <p className="text-gray-600 text-xs font-semibold">⏱️ Time Left</p>
               </div>
             </div>
+
+            {/* Team Display - ONLY FOR TEAM DEBATES */}
+            {isTeamDebate && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-cyan-50 rounded-xl border-2 border-emerald-300 shadow-md">
+                <p className="text-center text-sm font-bold text-gray-700 mb-3">🎪 {teamSize} Team Debate</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Team FOR */}
+                  <div className={`p-3 rounded-lg border-2 transition ${
+                    myTeam === 'FOR' 
+                      ? 'bg-green-100 border-green-500 shadow-lg scale-105' 
+                      : 'bg-gray-100 border-gray-300'
+                  }`}>
+                    <p className="text-xs font-bold text-green-700 mb-2">🟢 TEAM FOR</p>
+                    <div className="space-y-1">
+                      {teamFor.map(member => (
+                        <div key={member.userId} className="text-xs text-gray-800 flex items-center gap-1">
+                          <span className={turnOrder[currentTurnIndex] === member.userId ? '🎤' : '👤'}>
+                          </span>
+                          {member.playerName}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Team AGAINST */}
+                  <div className={`p-3 rounded-lg border-2 transition ${
+                    myTeam === 'AGAINST' 
+                      ? 'bg-red-100 border-red-500 shadow-lg scale-105' 
+                      : 'bg-gray-100 border-gray-300'
+                  }`}>
+                    <p className="text-xs font-bold text-red-700 mb-2">🔴 TEAM AGAINST</p>
+                    <div className="space-y-1">
+                      {teamAgainst.map(member => (
+                        <div key={member.userId} className="text-xs text-gray-800 flex items-center gap-1">
+                          <span className={turnOrder[currentTurnIndex] === member.userId ? '🎤' : '👤'}>
+                          </span>
+                          {member.playerName}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {turnOrder.length > 0 && (
+                  <div className="mt-3 p-2 bg-white rounded-lg border border-blue-300 text-center">
+                    <p className="text-xs font-semibold text-blue-700">
+                      Current Turn: 🎤 {
+                        teamFor.find(m => m.userId === turnOrder[currentTurnIndex])?.playerName ||
+                        teamAgainst.find(m => m.userId === turnOrder[currentTurnIndex])?.playerName ||
+                        'Waiting...'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Animated AI Avatar - ONLY FOR AI DEBATES */}
             {isAIDebate && (
