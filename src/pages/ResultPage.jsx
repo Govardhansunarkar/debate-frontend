@@ -42,7 +42,10 @@ export default function ResultPage() {
         });
 
         // Check if this is an AI debate
-        if (savedRoomType === 'ai') {
+        const isAIDebateTemp = savedRoomType === 'ai';
+        const isUserOnlyDebate = savedRoomType === 'user-only';
+        
+        if (isAIDebateTemp) {
           setIsAIDebate(true);
         }
 
@@ -51,7 +54,7 @@ export default function ResultPage() {
           setSpeeches(parsedSpeeches);
 
           // ⚡ OPTIMIZATION: Show instant feedback IMMEDIATELY
-          if (savedRoomType === 'ai') {
+          if (isAIDebateTemp) {
             // AI Debate: Use quick fallback feedback
             const quickFeedback = generateQuickFeedback(parsedSpeeches);
             const simplifiedQuickFeedback = simplifyFeedback(quickFeedback, parsedSpeeches);
@@ -65,24 +68,24 @@ export default function ResultPage() {
             setFeedback(null); // No single feedback for user debates
           }
 
-          // ⚡ For AI debates only: Fetch REAL AI feedback in background
-          if (savedRoomType === 'ai') {
+          // ⚡ Fetch REAL AI feedback in background for both AI and Private (User-Only) debates
+          if (isAIDebateTemp || isUserOnlyDebate) {
             setFetchingFeedback(true);
             (async () => {
               try {
-                console.log('[ResultPage] ⏳ Fetching full AI feedback in background...');
+                console.log('[ResultPage] ⏳ Fetching full AI analysis in background for', savedRoomType, '...');
                 const feedbackData = await getDebateFeedback(
                   debateId,
                   savedTopic || "General Debate",
                   parsedSpeeches
                 );
-                console.log('[ResultPage] ✅ Full AI feedback received:', feedbackData);
+                console.log('[ResultPage] ✅ Full AI analysis received:', feedbackData);
                 
                 const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
-                console.log('[ResultPage] Simplified feedback:', simplifiedFeedback);
+                console.log('[ResultPage] Simplified AI analysis:', simplifiedFeedback);
                 setFeedback(simplifiedFeedback);
               } catch (err) {
-                console.error('[ResultPage] Error fetching feedback:', err);
+                console.error('[ResultPage] Error fetching AI analysis:', err);
                 // Keep using quick feedback if API fails
               } finally {
                 setFetchingFeedback(false);
@@ -272,24 +275,24 @@ export default function ResultPage() {
           </div>
         )}
 
-        {/* AI Feedback Report (AI Debates Only) */}
-        {isAIDebate && (
+        {/* AI Feedback Report (AI and Private Debates) */}
+        {(isAIDebate || localStorage.getItem(`roomType_${debateId}`) === 'user-only') && (
           <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
-          <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Feedback</h2>
-          {fetchingFeedback ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">🔄 Analyzing your debate speech...</p>
-            </div>
-          ) : feedback ? (
-            <FeedbackReport 
-              feedback={feedback} 
-              playerName={localStorage.getItem("playerName")}
-              debateMetrics={debateMetrics}
-            />
-          ) : (
-            <p className="text-gray-600">No feedback available yet.</p>
-          )}
-        </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Analysis</h2>
+            {fetchingFeedback ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">🔄 Generating AI-Powered Analysis for your debate...</p>
+              </div>
+            ) : feedback ? (
+              <FeedbackReport 
+                feedback={feedback} 
+                playerName={localStorage.getItem("playerName")}
+                debateMetrics={debateMetrics}
+              />
+            ) : (
+              <p className="text-gray-600">AI analysis is not available for this session.</p>
+            )}
+          </div>
         )}
 
         {/* Debate Messages */}
