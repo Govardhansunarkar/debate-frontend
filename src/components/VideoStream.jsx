@@ -25,48 +25,56 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     // Create a unique peer ID for this user
     const peerId = `${debateId}_${userId}`;
     
-    // PeerJS now runs on same port as Express via ExpressPeerServer
-    // No need to specify port - it auto-detects
+    // Determine backend host based on environment
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const backendHost = isProduction ? 'debate-backend-paro.onrender.com' : 'localhost';
+    
+    // PeerJS configuration - optimized for Render production
     const peerConfig = {
-      host: window.location.hostname === 'localhost' 
-        ? 'localhost' 
-        : 'debate-backend-paro.onrender.com',
+      host: backendHost,
       path: '/peerjs',
-      secure: window.location.protocol === 'https:',
+      secure: window.location.protocol === 'https:', // Use HTTPS in production
       debug: 2,
       allow_discovery: false,
+      // Only set port for local dev, Render uses default HTTPS port
+      ...(isProduction ? {} : { port: 3001 }),
       config: {
         iceServers: [
-          { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
-          { urls: ['stun:stun2.l.google.com:19302'] }
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:3478' },
+          { urls: 'stun:stun4.l.google.com:19302' },
         ]
       }
     };
     
-    // For local dev with separate port
-    if (window.location.hostname === 'localhost') {
-      peerConfig.port = 3001; // Same port as Express in local dev
+    console.log(`🔗 PeerJS Config (${isProduction ? 'PRODUCTION' : 'LOCAL'}):`, peerConfig);
+    
+    try {
+      const peer = new Peer(peerId, peerConfig);
+
+      peer.on("error", (err) => {
+        console.error("❌ PeerJS Error:", err.type, "-", err.message || err);
+        if (err.type === 'unavailable-id') {
+          console.log("⚠️ Peer ID already in use");
+        } else if (err.type === 'peer-unavailable') {
+          console.log("⚠️ Peer not available");
+        }
+      });
+
+      peer.on("open", (id) => {
+        console.log("✅ PeerJS connected! ID:", id);
+      });
+
+      peerRef.current = peer;
+    } catch (err) {
+      console.error("Failed to initialize PeerJS:", err);
+      setError("Failed to initialize video connection");
     }
-    
-    console.log(`🔗 PeerJS Config:`, peerConfig);
-    
-    const peer = new Peer(peerId, peerConfig);
-
-    peer.on("error", (err) => {
-      console.warn("PeerJS Error:", err.type, err);
-      if (err.type === 'unavailable-id') {
-        console.log("Peer ID already in use, waiting for fresh connection...");
-      }
-    });
-
-    peer.on("open", () => {
-      console.log("PeerJS connected:", peerId);
-    });
-
-    peerRef.current = peer;
 
     return () => {
       if (peerRef.current) {
+        console.log("Cleaning up PeerJS");
         peerRef.current.destroy();
       }
     };
