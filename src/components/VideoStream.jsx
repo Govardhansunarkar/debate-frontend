@@ -270,12 +270,20 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     if (!localStream || !peerRef.current) return;
 
     try {
-      const peerId = `${debateId}_${remoteUserId}`;
+      // THE FIX: Standardize the Peer ID format to match what users register with
+      const targetPeerId = `${debateId}_${remoteUserId}`;
       const playerNameForConnection = participantNamesRef.current[remoteUserId] || "Participant";
       
-      const call = peerRef.current.call(peerId, localStream, {
+      console.log(`📡 Starting Peer Call to: ${targetPeerId}`);
+      
+      const call = peerRef.current.call(targetPeerId, localStream, {
         metadata: { playerName: playerName }
       });
+
+      if (!call) {
+        console.error("❌ PeerJS failed to create call object");
+        return;
+      }
 
       call.on("stream", (remoteStream) => {
         console.log("Received remote stream from:", remoteUserId);
