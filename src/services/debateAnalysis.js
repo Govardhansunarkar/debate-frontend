@@ -44,13 +44,38 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
 
     console.log('[getDebateFeedback] 📝 Formatted speeches:', formattedSpeeches.length);
 
-    // Call the NVIDIA LLM-powered analysis endpoint with 45 second timeout
-    const response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
-      speeches: formattedSpeeches,
-      topic: topic,
-    }, {
-      timeout: 20000  // Reduced from 45s to 20s - better UX, show results faster
-    });
+    // Call the NVIDIA LLM-powered analysis endpoint with increased timeout for production
+    // NVIDIA API can take 30-60 seconds to generate quality feedback
+    let response;
+    let retries = 0;
+    const maxRetries = 2;
+    
+    while (retries <= maxRetries) {
+      try {
+        console.log(`[getDebateFeedback] 📡 Calling AI analysis API (attempt ${retries + 1}/${maxRetries + 1})...`);
+        response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
+          speeches: formattedSpeeches,
+          topic: topic,
+        }, {
+          timeout: 60000  // 60 seconds for NVIDIA API (was 20s, causing timeouts)
+        });
+        
+        console.log('[getDebateFeedback] ✅ Response received successfully');
+        break; // Success, exit retry loop
+      } catch (error) {
+        console.warn(`[getDebateFeedback] ⚠️ Attempt ${retries + 1} failed:`, error.message);
+        
+        retries++;
+        if (retries > maxRetries) {
+          throw error; // Throw after max retries
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const delayMs = Math.min(1000 * Math.pow(2, retries), 10000);
+        console.log(`[getDebateFeedback] ⏳ Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
 
     console.log('[getDebateFeedback] ✅ Response received:', {
       success: response.data?.success,
