@@ -280,8 +280,10 @@ export default function ResultPage() {
           <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
             <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Analysis</h2>
             {fetchingFeedback ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600">🔄 Generating AI-Powered Analysis for your debate...</p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
+                <p className="text-xl font-semibold text-purple-700 animate-pulse">🔄 Generating AI-Powered Analysis...</p>
+                <p className="text-gray-500 mt-2">NVIDIA Nemotron is analyzing your arguments (takes ~15-30s)</p>
               </div>
             ) : feedback ? (
               <FeedbackReport 
@@ -290,7 +292,16 @@ export default function ResultPage() {
                 debateMetrics={debateMetrics}
               />
             ) : (
-              <p className="text-gray-600">AI analysis is not available for this session.</p>
+              <div className="text-center py-8">
+                <p className="text-orange-600 font-semibold mb-2">⚠️ Analysis not loaded</p>
+                <p className="text-gray-600">Check if your backend is running and NVIDIA API keys are correct.</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                >
+                  Retry Analysis
+                </button>
+              </div>
             )}
           </div>
         )}
