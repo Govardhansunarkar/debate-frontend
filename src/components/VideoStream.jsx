@@ -29,29 +29,32 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
     const backendHost = isProduction ? 'debate-backend-paro.onrender.com' : 'localhost';
     
-    // PeerJS configuration - optimized for Render production
-    const peerConfig = {
-      host: isProduction ? 'debate-backend-paro.onrender.com' : 'localhost',
-      path: '/peerjs',
-      secure: true, // Always use secure for WebRTC in production/modern browsers
-      debug: 1,
-      allow_discovery: false,
-      // Only set port for local dev
-      ...(isProduction ? {} : { port: 3001 }),
-      config: {
-        iceServers: [
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:3478' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-        ]
-      }
-    };
+    // PeerJS configuration - specialized for Render Production
+    // Using peerjs.com's free cloud server instead of self-hosted for maximum reliability
+    const peerConfig = isProduction 
+      ? {
+          debug: 1,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+            ]
+          }
+        }
+      : {
+          host: 'localhost',
+          port: 3001,
+          path: '/peerjs',
+          debug: 1,
+          config: {
+            iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }]
+          }
+        };
     
-    console.log(`🔗 PeerJS Config (${isProduction ? 'PRODUCTION' : 'LOCAL'}):`, peerConfig);
+    console.log(`🔗 PeerJS Config (${isProduction ? 'CLOUD' : 'LOCAL'}):`, peerConfig);
     
     try {
-      const peer = new Peer(peerId, peerConfig);
+      const peer = isProduction ? new Peer(peerConfig) : new Peer(peerId, peerConfig);
 
       peer.on("error", (err) => {
         console.error("❌ PeerJS Error:", err.type, "-", err.message || err);
