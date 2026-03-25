@@ -143,6 +143,12 @@ export default function DebateRoom() {
       handleEndDebate();
     });
 
+    socket.on("debate-started", (data) => {
+      console.log("Debate started by admin:", data);
+      setIsActive(true);
+      setTimer(300); // Sync timer
+    });
+
     socket.on("player-disconnected", (data) => {
       // Remove player from list
       setPlayers((prev) =>
@@ -228,6 +234,14 @@ export default function DebateRoom() {
     setIsActive(true);
     setSpeeches([]); // Reset speeches when debate starts
     setDebateMetrics(null);
+    
+    // Emit start signal to server to sync everyone
+    socket.emit("start-debate", { 
+      debateId,
+      userId: user?.id,
+      playerName: user?.name
+    });
+    
     console.log('[DebateRoom] Debate started - isActive set to true, speeches reset');
   };
 
@@ -457,7 +471,7 @@ export default function DebateRoom() {
             )}
 
             {/* Video Stream Component - FOR ALL DEBATES (Jitsi handles UI) */}
-            <div className="bg-white rounded-xl shadow-md p-2 mb-4 border-2 border-gray-200 overflow-hidden h-[600px]">
+            <div className="bg-black rounded-3xl shadow-2xl mb-6 overflow-hidden h-[650px] border-4 border-gray-800 relative group">
               <VideoStream
                 debateId={debateId}
                 userId={user?.id}
@@ -465,22 +479,36 @@ export default function DebateRoom() {
                 isAIDebate={isAIDebate}
                 participants={players}
               />
+              
+              {/* Turn Indicator Overlay */}
+              {!isAIDebate && (
+                <div className="absolute top-6 left-6 z-10">
+                  <div className={`px-6 py-3 rounded-2xl backdrop-blur-md border-2 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 ${
+                    isActive ? 'bg-blue-600/40 border-blue-400/50 text-white' : 'bg-orange-500/40 border-orange-300/50 text-white'
+                  }`}>
+                    <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-blue-400 animate-pulse' : 'bg-orange-400'}`}></div>
+                    <span className="font-black tracking-widest uppercase text-sm">
+                      {isActive ? "Debate in Progress" : "Waiting for Admin to Start"}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Advanced Speech Recognition Component */}
-            {/* ⚡ Only show for AI Debate rooms */}
-            {isAIDebate && (
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200">
-                <AdvancedSpeechRecognition
-                  isActive={isActive}
-                  debateId={debateId}
-                  topic={topic}
-                  onSpeechEnd={handleTranscript}
-                  socket={socket}
-                  roomType={roomType}
-                />
+            {/* Turn Control Buttons - Admin Only */}
+            {!isAIDebate && !isActive && (
+              <div className="flex flex-col items-center justify-center p-8 bg-white border-4 border-dashed border-blue-200 rounded-3xl mb-8 animate-pulse hover:animate-none transition-all">
+                <h3 className="text-2xl font-black text-blue-900 mb-2 uppercase tracking-tighter">Ready to start?</h3>
+                <p className="text-blue-600 mb-6 font-medium text-center max-w-md">Once you start, all participants will be notified and the timer will begin.</p>
+                <button
+                  onClick={handleStart}
+                  className="px-12 py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl font-black text-xl shadow-2xl shadow-blue-500/40 transform hover:scale-110 active:scale-95 transition-all uppercase tracking-widest border-b-8 border-blue-900"
+                >
+                  🚀 Launch Debate
+                </button>
               </div>
             )}
+
 
             {/* User-Only Debate Instructions */}
             {!isAIDebate && isActive && (
