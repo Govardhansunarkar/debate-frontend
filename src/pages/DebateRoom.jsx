@@ -330,6 +330,9 @@ export default function DebateRoom() {
     localStorage.setItem(`topic_${debateId}`, topic);
     localStorage.setItem(`roomType_${debateId}`, roomType);
     
+    // Notify server that debate has ended
+    socket.emit("end-debate", { debateId });
+    
     // Call backend to end debate (only for backend debates, not local/demo debates)
     const isLocalDebate = debateId && debateId.startsWith('debate_');
     if (debateId && !isLocalDebate) {

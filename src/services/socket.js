@@ -2,21 +2,17 @@ import io from "socket.io-client";
 
 // Auto-detect server URL - localhost for dev, Render for production
 const SOCKET_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:8000' 
+  ? 'http://localhost:3001' 
   : 'https://debate-backend-paro.onrender.com';
 
 console.log('[socket.js] Connecting to:', SOCKET_URL);
-console.log('[socket.js] Environment:', import.meta.env.MODE);
 
 export const socket = io(SOCKET_URL, {
-  // Reconnection settings - aggressive for Render free tier
+  // Force polling first to avoid 'Invalid frame header' errors
+  transports: ['polling', 'websocket'],
+  upgrade: true,  
   reconnection: true,
-  reconnectionDelay: 2000,           // Wait 2s before first retry
-  reconnectionDelayMax: 30000,       // Max 30s between retries
-  reconnectionAttempts: 50,          // Try many times (2.5-3 min total)
-  
-  // Transport settings
-  transports: ['websocket', 'polling'],  // Try WebSocket first, then polling
+  reconnectionDelay: 2000,
   
   // Security & Headers
   withCredentials: true,

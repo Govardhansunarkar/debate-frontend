@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Auto-detect API URL - localhost for dev, Render for production
 const API_URL = import.meta.env.MODE === 'development'
-  ? 'http://localhost:8000/api'
+  ? 'http://localhost:3001/api'
   : 'https://debate-backend-paro.onrender.com/api';
 
 console.log('[aiDebateService] Using API URL:', API_URL);

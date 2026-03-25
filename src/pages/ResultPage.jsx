@@ -105,7 +105,7 @@ export default function ResultPage() {
         if (!isLocalDebate) {
           console.log('[ResultPage] Fetching from backend API...');
           const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:8000/api'
+            ? 'http://localhost:3001/api'
             : 'https://debate-backend-paro.onrender.com/api';
           
           // Non-blocking async fetch

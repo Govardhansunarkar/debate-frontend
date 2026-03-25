@@ -1,6 +1,6 @@
 // Use localhost for development, production URL for production
 const BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:8000/api'
+  ? 'http://localhost:3001/api'
   : 'https://debate-backend-paro.onrender.com/api';
 
 console.log('[api] Using BASE_URL:', BASE_URL);

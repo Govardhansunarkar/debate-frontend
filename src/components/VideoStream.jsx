@@ -31,13 +31,14 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     
     // PeerJS configuration - optimized for Render production
     const peerConfig = {
-      host: backendHost,
       path: '/peerjs',
       secure: window.location.protocol === 'https:', // Use HTTPS in production
       debug: 2,
+      // Fixed: Removed host property to let PeerJS use the current window host automatically
+      // This solves 'WebSocket is closed before connection is established' errors
       allow_discovery: false,
       // Only set port for local dev, Render uses default HTTPS port
-      ...(isProduction ? {} : { port: 3001 }),
+      ...(isProduction ? {} : { port: 3001, host: 'localhost' }),
       config: {
         iceServers: [
           { urls: 'stun:stun1.l.google.com:19302' },
@@ -452,185 +453,144 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
     }
   };
 
-  // Enhanced grid calculation for many users
+  // Enhanced grid calculation for Google Meet style
   const remoteCount = Object.keys(remoteStreams).length;
   const totalCount = remoteCount + 1; // +1 for local video
   
-  let gridClass = "grid-cols-1";
-  if (totalCount === 2) gridClass = "grid-cols-1 md:grid-cols-2";
-  if (totalCount === 3) gridClass = "grid-cols-1 md:grid-cols-3";
-  if (totalCount === 4) gridClass = "grid-cols-2 md:grid-cols-2";
-  if (totalCount === 5) gridClass = "grid-cols-2 md:grid-cols-5";
-  if (totalCount === 6) gridClass = "grid-cols-2 md:grid-cols-3";
-  if (totalCount === 7) gridClass = "grid-cols-2 md:grid-cols-4 lg:grid-cols-7";
-  if (totalCount === 8) gridClass = "grid-cols-2 md:grid-cols-4";
-  if (totalCount === 9) gridClass = "grid-cols-3 md:grid-cols-3";
-  if (totalCount >= 10) gridClass = "grid-cols-3 md:grid-cols-5 lg:grid-cols-6";
-
   return (
-    <div className="w-full">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <div className="whitespace-pre-line text-sm">{error}</div>
-          <button
-            onClick={retryPermissions}
-            className="mt-3 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition"
-          >
-            🔄 Retry Camera/Microphone Access
-          </button>
-          <p className="text-xs mt-2 italic">After allowing permissions in browser settings, click Retry above.</p>
-        </div>
-      )}
+    <div className="flex flex-col h-[600px] w-full bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-700 relative">
+      {/* Video Content Area */}
+      <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+        <div className={`grid gap-4 h-full min-h-[400px] ${
+          totalCount === 1 ? 'grid-cols-1' :
+          totalCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
+          totalCount <= 4 ? 'grid-cols-2' :
+          totalCount <= 6 ? 'grid-cols-2 md:grid-cols-3' :
+          'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+        }`}>
+          {/* Local Video - Always first and highlighted */}
+          <div className="relative group rounded-xl overflow-hidden bg-gray-800 border-2 border-blue-500/50 shadow-lg aspect-video">
+            {!isCameraOn ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800">
+                <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl font-bold text-white shadow-xl border-4 border-white/20">
+                  {playerName?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <span className="mt-4 text-gray-400 font-medium tracking-wide">Camera is Off</span>
+              </div>
+            ) : null}
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className={`w-full h-full object-cover transition-opacity duration-300 ${!isCameraOn ? 'opacity-0' : 'opacity-100'}`}
+            />
+            <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-xs font-semibold border border-white/10">
+              <span className={`w-2 h-2 rounded-full ${isMicOn ? 'bg-blue-500 animate-pulse' : 'bg-red-500'}`}></span>
+              You ({playerName})
+              {!isMicOn && <span className="ml-1 text-red-400 font-bold px-1 rounded bg-black/40">MUTED</span>}
+            </div>
+          </div>
 
-      {/* Local Video */}
-      <div className="mb-3 bg-black rounded-lg overflow-hidden shadow-lg">
-        <div className="relative w-full aspect-video bg-gray-900 h-64">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
-            📹 You ({playerName})
-          </div>
-          <div className="absolute top-2 right-2 flex gap-1">
-            <button
-              onClick={toggleCamera}
-              className={`px-2 py-1 rounded text-sm font-semibold transition ${
-                isCameraOn
-                  ? "bg-green-500 hover:bg-green-600"
-                  : "bg-red-500 hover:bg-red-600"
-              } text-white`}
-              title={isCameraOn ? "Turn off camera" : "Turn on camera"}
-            >
-              {isCameraOn ? "📹" : "🚫"}
-            </button>
-            <button
-              onClick={toggleMicrophone}
-              className={`px-2 py-1 rounded text-sm font-semibold transition ${
-                isMicOn ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
-              } text-white`}
-              title={isMicOn ? "Mute microphone" : "Unmute microphone"}
-            >
-              {isMicOn ? "🎤" : "🔇"}
-            </button>
-          </div>
+          {/* Remote Videos */}
+          {Object.entries(remoteStreams).map(([remoteUserId, data]) => (
+            <div key={remoteUserId} className="relative group rounded-xl overflow-hidden bg-gray-800 border border-gray-700 hover:border-blue-400/50 transition-all duration-300 shadow-xl aspect-video">
+              <RemoteVideo stream={data.stream} />
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-xs font-semibold border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                {data.playerName || "Participant"}
+              </div>
+            </div>
+          ))}
+          
+          {/* AI Avatar (if AI debate and alone) */}
+          {isAIDebate && remoteCount === 0 && (
+            <div className="relative group rounded-xl overflow-hidden bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 border-2 border-purple-500/30 shadow-2xl flex flex-col items-center justify-center aspect-video">
+              <div className="text-7xl mb-4 animate-pulse drop-shadow-2xl">🤖</div>
+              <h3 className="text-xl font-black text-white tracking-widest uppercase">AI Arena Pro</h3>
+              <div className="mt-4 flex items-center gap-2 bg-purple-500/20 px-4 py-2 rounded-full border border-purple-500/40">
+                <span className="w-2 h-2 bg-purple-400 rounded-full animate-ping"></span>
+                <span className="text-purple-200 text-xs font-bold uppercase tracking-tighter">Analyzing Argument</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Remote Videos Grid */}
-      {remoteCount > 0 && (
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold mb-2 text-gray-800 flex items-center gap-2">
-            🎥 <span>Debate Participants ({remoteCount})</span>
-            <span className="inline-block bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-              LIVE
-            </span>
-          </h3>
-          <div className={`grid ${gridClass} gap-2 auto-rows-max`}>
-            {Object.entries(remoteStreams).map(([remoteUserId, data]) => {
-              const isSpeaking = speakingUsers.has(remoteUserId);
-              const volume = volumeLevels[remoteUserId] || 0;
-              const volumePercent = Math.min(100, volume);
-              
-              return (
-                <div key={remoteUserId} className="w-full">
-                  <div className={`bg-black rounded-lg overflow-hidden shadow-lg transition-all ${isSpeaking ? 'ring-2 ring-green-400 scale-105' : 'ring-1 ring-gray-600'}`}>
-                    <div className="relative w-full aspect-video bg-gray-900">
-                      <video
-                        autoPlay
-                        playsInline
-                        className="w-full h-full object-cover"
-                        srcObject={data.stream}
-                      />
-                      {/* Speaking indicator */}
-                      {isSpeaking && (
-                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">
-                          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                          SPEAKING
-                        </div>
-                      )}
-                      
-                      {/* Streaming status */}
-                      {!isSpeaking && (
-                        <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
-                          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                          STREAMING
-                        </div>
-                      )}
-                      
-                      {/* Player name */}
-                      <div className="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-semibold">
-                        👤 {data.playerName}
-                      </div>
+      {/* Meet-style Control Bar */}
+      <div className="bg-gray-800/95 backdrop-blur-2xl border-t border-gray-700 p-6 flex items-center justify-center gap-10">
+        {/* Toggle Mic */}
+        <button
+          onClick={toggleMicrophone}
+          className={`group p-5 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center relative ${
+            isMicOn 
+              ? "bg-gray-700 text-white hover:bg-gray-600 border border-gray-600" 
+              : "bg-red-500 text-white hover:bg-red-600 shadow-red-500/20 shadow-xl"
+          }`}
+          title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
+        >
+          {isMicOn ? (
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          ) : (
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          )}
+          <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-black text-white text-xs px-2 py-1 rounded">Mic</span>
+        </button>
 
-                      {/* Volume visualization bar */}
-                      <div className="absolute bottom-2 right-2 flex flex-col items-end gap-1">
-                        <div className="w-12 h-1 bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all ${
-                              volumePercent > 70 ? 'bg-red-500' : volumePercent > 40 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`}
-                            style={{ width: `${volumePercent}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-white bg-black/60 px-1 rounded">{volumePercent}%</span>
-                      </div>
-                    </div>
-                    
-                    {/* Volume control slider */}
-                    <div className="bg-gray-800 p-2 flex items-center gap-2">
-                      <span className="text-xs text-gray-300 min-w-6">🔊</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={remotePeerVolumes[remoteUserId] || 100}
-                        onChange={(e) => {
-                          const newVolume = parseInt(e.target.value) / 100;
-                          setRemotePeerVolumes((prev) => ({
-                            ...prev,
-                            [remoteUserId]: newVolume,
-                          }));
-                        }}
-                        className="flex-1 h-1 bg-gray-600 rounded accent-blue-500 cursor-pointer"
-                        title="Adjust participant volume"
-                      />
-                      <span className="text-xs text-gray-300 min-w-6 text-right">{Math.round((remotePeerVolumes[remoteUserId] || 1) * 100)}%</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        {/* Toggle Video */}
+        <button
+          onClick={toggleCamera}
+          className={`group p-5 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center relative ${
+            isCameraOn 
+              ? "bg-gray-700 text-white hover:bg-gray-600 border border-gray-600" 
+              : "bg-red-500 text-white hover:bg-red-600 shadow-red-500/20 shadow-xl"
+          }`}
+          title={isCameraOn ? "Turn Camera Off" : "Turn Camera On"}
+        >
+          {isCameraOn ? (
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          ) : (
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          )}
+          <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-black text-white text-xs px-2 py-1 rounded">Camera</span>
+        </button>
 
-      {/* AI Avatar (if AI debate) */}
-      {isAIDebate && remoteCount === 0 && (
-        <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg p-4 text-center text-white shadow-lg">
-          <div className="text-6xl mb-2 animate-bounce">🤖</div>
-          <h3 className="text-lg font-bold">AI Opponent</h3>
-          <p className="mt-1 text-white/80 text-sm">Listening and analyzing your arguments...</p>
-        </div>
-      )}
+        {/* End Room Button (Red Circle) */}
+        <button
+          className="group p-5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-2xl shadow-red-600/40 relative"
+          title="Leave Debate"
+          onClick={() => {
+            if(confirm("Are you sure you want to leave the debate?")) window.location.href = '/';
+          }}
+        >
+          <svg className="w-8 h-8 rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 11H8V11h8v2z"/>
+          </svg>
+          <span className="absolute -top-10 scale-0 group-hover:scale-100 transition-transform bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap font-bold">Leave Debate</span>
+        </button>
+      </div>
 
-      {/* Waiting Message */}
-      {!isAIDebate && remoteCount === 0 && (
-        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center shadow">
-          <p className="text-blue-800 font-semibold text-sm">⏳ Waiting for other participants to join...</p>
-          <p className="text-blue-600 text-xs mt-1">Your camera and microphone are streaming and ready!</p>
-          <p className="text-blue-500 text-xs mt-1">Connected users: {connectedUsers.size}</p>
+      {error && (
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-xl text-white px-8 py-4 rounded-full shadow-2xl z-50 flex items-center gap-6 border border-white/20 animate-bounce">
+          <span className="text-xs font-black tracking-widest uppercase">{error}</span>
+          <button onClick={retryPermissions} className="bg-white text-black px-4 py-1.5 rounded-full text-xs font-bold hover:bg-gray-200 transition">RETRY</button>
         </div>
       )}
     </div>
   );
 }
 
-// Remote video player component
-function RemoteVideoPlayer({ stream, userId, playerName = "Participant" }) {
+// Simple internal component to handle remote video streams
+function RemoteVideo({ stream }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -640,18 +600,11 @@ function RemoteVideoPlayer({ stream, userId, playerName = "Participant" }) {
   }, [stream]);
 
   return (
-    <div className="bg-black rounded-lg overflow-hidden shadow-lg">
-      <div className="relative w-full aspect-video bg-gray-900">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute bottom-4 left-4 bg-black/80 text-white px-3 py-2 rounded text-sm font-semibold">
-          📹 {playerName}
-        </div>
-      </div>
-    </div>
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      className="w-full h-full object-cover"
+    />
   );
 }
