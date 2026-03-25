@@ -456,75 +456,29 @@ export default function DebateRoom() {
               </div>
             )}
 
-            {/* Animated AI Avatar - ONLY FOR AI DEBATES */}
-            {isAIDebate && (
-              <>
-                <div className="flex items-center justify-center mb-6 mt-2">
-                  <div className="relative w-40 h-40 flex items-center justify-center">
-                    {/* Animated Background Glow */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-xl opacity-75 animate-pulse"></div>
-                    
-                    {/* Inner Circle with Animated Border */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full p-1">
-                      <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                        {/* AI Avatar Icon */}
-                        <div className="text-6xl animate-bounce" style={{ animationDuration: '2s' }}>
-                          🤖
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Orbiting Elements */}
-                    <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-2 w-2 h-2 bg-purple-400 rounded-full"></div>
-                      <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 w-2 h-2 bg-pink-400 rounded-full"></div>
-                    </div>
-
-                    {/* Thinking Indicator */}
-                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                      <div className="flex gap-1 items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Text for AI Debates */}
-                <div className="text-center mb-4">
-                  <p className="text-lg font-bold text-gray-800">🎤 Ready to debate?</p>
-                  <p className="text-sm text-gray-600">Click the microphone to speak with AI</p>
-                </div>
-              </>
-            )}
-
-            {/* Video Stream Component - ONLY FOR USER DEBATES */}
-            {!isAIDebate && (
-              <div className="bg-white rounded-xl shadow-md p-4 mb-4 border-2 border-gray-200">
-                <VideoStream
-                  debateId={debateId}
-                  userId={user?.id}
-                  playerName={user?.name}
-                  isAIDebate={isAIDebate}
-                  participants={players}
-                />
-              </div>
-            )}
+            {/* Video Stream Component - FOR ALL DEBATES (Jitsi handles UI) */}
+            <div className="bg-white rounded-xl shadow-md p-2 mb-4 border-2 border-gray-200 overflow-hidden h-[600px]">
+              <VideoStream
+                debateId={debateId}
+                userId={user?.id}
+                playerName={user?.name}
+                isAIDebate={isAIDebate}
+                participants={players}
+              />
+            </div>
 
             {/* Advanced Speech Recognition Component */}
             {/* ⚡ Only show for AI Debate rooms */}
             {isAIDebate && (
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200 flex-1">
-              <AdvancedSpeechRecognition
-                isActive={isActive}
-                debateId={debateId}
-                topic={topic}
-                onSpeechEnd={handleTranscript}
-                socket={socket}
-                roomType={roomType}
-              />
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-4 mb-4 border-2 border-green-200">
+                <AdvancedSpeechRecognition
+                  isActive={isActive}
+                  debateId={debateId}
+                  topic={topic}
+                  onSpeechEnd={handleTranscript}
+                  socket={socket}
+                  roomType={roomType}
+                />
               </div>
             )}
 
