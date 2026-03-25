@@ -9,18 +9,30 @@ console.log('[socket.js] Connecting to:', SOCKET_URL);
 console.log('[socket.js] Environment:', import.meta.env.MODE);
 
 export const socket = io(SOCKET_URL, {
+  // Reconnection settings - optimized for Render
   reconnection: true,
   reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  reconnectionAttempts: 15,  // More attempts
-  transports: ['websocket', 'polling'],  // Try WebSocket first, fall back to polling
+  reconnectionDelayMax: 10000,      // Increased from 5000
+  reconnectionAttempts: 20,          // Increased from 15
+  
+  // Transport settings
+  transports: ['websocket', 'polling'],  // Try WebSocket first, then polling
+  
+  // Security & Headers
   withCredentials: true,
+  secure: window.location.protocol === 'https:', // Auto-detect HTTPS
+  
+  // Timeout settings
+  timeout: 20000,                    // Increased from 10000
+  connectTimeout: 20000,
+  
+  // Other
   path: '/socket.io/',
-  secure: import.meta.env.MODE === 'production',  // Only enforce HTTPS in production
-  forceNew: true,  // Force new connection
-  timeout: 10000,
   autoConnect: true,
-  enablesXDR: true,  // For IE9
+  enablesXDR: true,
+  
+  // For production: force new connection to avoid stale connections
+  forceNew: import.meta.env.MODE === 'production'
 });
 
 socket.on("connect", () => {
