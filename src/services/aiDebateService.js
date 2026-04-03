@@ -8,7 +8,7 @@ const API_URL = import.meta.env.MODE === 'development'
 console.log('[aiDebateService] Using API URL:', API_URL);
 
 // Get AI response to user's argument with full debate context
-export const getAIResponse = async (userSpeech, topic, debateContext) => {
+export const getAIResponse = async (userSpeech, topic, debateContext, speechMeta = {}) => {
   try {
     console.log('[aiDebateService] Starting getAIResponse');
     console.log('[aiDebateService] User Speech:', userSpeech);
@@ -20,15 +20,21 @@ export const getAIResponse = async (userSpeech, topic, debateContext) => {
     if (debateContext && Array.isArray(debateContext)) {
       formattedContext = debateContext.map((item, idx) => ({
         text: item?.text || item || "",
-        speaker: item?.playerName || (idx % 2 === 0 ? "Player" : "AI"),
-        timestamp: item?.timestamp || new Date()
+        speaker: item?.speaker || item?.playerName || (idx % 2 === 0 ? "user" : "ai"),
+        timestamp: item?.timestamp || new Date(),
+        duration: item?.duration || null
       }));
     }
     
     const requestPayload = {
       userArgument: userSpeech,
       topic: topic,
-      debateContext: formattedContext
+      debateContext: formattedContext,
+      speechMeta: {
+        speechDuration: speechMeta?.speechDuration || null,
+        transcriptSource: speechMeta?.transcriptSource || "final",
+        wordCount: userSpeech ? userSpeech.split(/\s+/).filter(Boolean).length : 0
+      }
     };
     
     console.log('[aiDebateService] Request Payload:', JSON.stringify(requestPayload, null, 2));

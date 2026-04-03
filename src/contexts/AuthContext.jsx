@@ -2,6 +2,33 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const syncUserWithBackend = async (userData) => {
+  try {
+    const API_URL = "http://localhost:3001/api/users/login"; // आपका बैकएंड URL
+    
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uid: userData.id,
+        email: userData.email,
+        displayName: userData.name,
+        photoURL: userData.picture
+      }),
+    });
+
+    if (response.ok) {
+      console.log("✅ User synced with Firebase via Backend!");
+    } else {
+      console.error("❌ Failed to sync user with Backend");
+    }
+  } catch (error) {
+    console.error("❌ Network error while syncing user:", error.message);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +70,9 @@ export const AuthProvider = ({ children }) => {
         picture: decodedToken.picture,
         loginTime: new Date().toISOString()
       };
+
+      // 👇 बैकएंड (Firebase) में यूजर डेटा भेजने के लिए
+      syncUserWithBackend(userData);
 
       // Store in localStorage
       localStorage.setItem('authUser', JSON.stringify(userData));

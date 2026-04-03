@@ -6,7 +6,7 @@ import { socket } from "../services/socket";
 import { useAuth } from "../contexts/AuthContext";
 import VideoStream from "../components/VideoStream";
 import AdvancedSpeechRecognition from "../components/AdvancedSpeechRecognition";
-import { trackDebateMetrics, prepareDebateTranscript } from "../services/debateAnalysis";
+import { trackDebateMetrics } from "../services/debateAnalysis";
 
 export default function DebateRoom() {
   const { debateId } = useParams();
@@ -20,21 +20,19 @@ export default function DebateRoom() {
   const [players, setPlayers] = useState([]);
   const [topic, setTopic] = useState("AI and the Future");
   const [isAIDebate, setIsAIDebate] = useState(false);
-  const [roomType, setRoomType] = useState('user-only');  // Track room type
-  const [speeches, setSpeeches] = useState([]); // Track all speeches
-  const [debateMetrics, setDebateMetrics] = useState(null); // Debate stats
+  const [roomType, setRoomType] = useState('user-only');
+  const [speeches, setSpeeches] = useState([]);
+  const [debateMetrics, setDebateMetrics] = useState(null);
   
-  // Team debate state
   const [isTeamDebate, setIsTeamDebate] = useState(false);
-  const [teamSize, setTeamSize] = useState(null); // '2v2' or '3v3'
-  const [myTeam, setMyTeam] = useState(null); // 'FOR' or 'AGAINST'
-  const [teamFor, setTeamFor] = useState([]); // Team FOR players
-  const [teamAgainst, setTeamAgainst] = useState([]); // Team AGAINST players
-  const [turnOrder, setTurnOrder] = useState([]); // Turn order for team debates
-  const [currentTurnIndex, setCurrentTurnIndex] = useState(0); // Current turn
+  const [teamSize, setTeamSize] = useState(null);
+  const [myTeam, setMyTeam] = useState(null);
+  const [teamFor, setTeamFor] = useState([]);
+  const [teamAgainst, setTeamAgainst] = useState([]);
+  const [turnOrder, setTurnOrder] = useState([]);
+  const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
 
   useEffect(() => {
-    // Check if this is an AI debate or team debate
     const params = new URLSearchParams(window.location.search);
     const isAI = params.get('ai') === 'true';
     const topicFromUrl = params.get('topic');
@@ -43,13 +41,8 @@ export default function DebateRoom() {
     const teamAssignmentFromUrl = params.get('teamAssignment');
     
     setIsAIDebate(isAI);
+    if (topicFromUrl) setTopic(decodeURIComponent(topicFromUrl));
     
-    // Set topic from URL if available
-    if (topicFromUrl) {
-      setTopic(decodeURIComponent(topicFromUrl));
-    }
-    
-    // Set room type based on URL parameters
     if (isAI) {
       setRoomType('ai');
     } else if (matchType === 'team') {
@@ -65,103 +58,46 @@ export default function DebateRoom() {
       playerName: user?.name,
       roomType: isAI ? 'ai' : (matchType === 'team' ? 'team-debate' : 'user-only'),
       debateType: matchType === 'team' ? 'team-debate' : (isAI ? 'ai' : 'user-only'),
-      team: teamAssignmentFromUrl || null, // Pass team assignment
+      team: teamAssignmentFromUrl || null,
       topic: topicFromUrl ? decodeURIComponent(topicFromUrl) : 'Debate Topic'
     });
 
-    // When I first join debate - get all participants already in room
     socket.on("debate-joined", (data) => {
-      console.log("Debate joined successfully. Participants:", data.participants, "Topic:", data.topic);
-      
-      // Update topic from server
-      if (data.topic) {
-        setTopic(data.topic);
-      }
-      
-      // Handle team debate data
+      if (data.topic) setTopic(data.topic);
       if (data.debateType === 'team-debate') {
-        // Organize players by team
-        const forTeam = data.participants.filter(p => p.team === 'FOR');
-        const againstTeam = data.participants.filter(p => p.team === 'AGAINST');
-        
-        setTeamFor(forTeam);
-        setTeamAgainst(againstTeam);
+        setTeamFor(data.participants.filter(p => p.team === 'FOR'));
+        setTeamAgainst(data.participants.filter(p => p.team === 'AGAINST'));
         setTurnOrder(data.turnOrder || []);
         setCurrentTurnIndex(0);
       }
-      
-      if (data.participants && data.participants.length > 0) {
-        // Only add if not already present
-        setPlayers((prev) => {
-          const ids = new Set(prev.map(p => p.userId));
-          const newParticipants = data.participants.filter(p => !ids.has(p.userId));
-          return [...prev, ...newParticipants];
-        });
+      if (data.participants) {
+        setPlayers(data.participants);
       }
     });
 
-    socket.on("receive-message", (data) => {
-      setMessages((prev) => [...prev, data]);
-    });
+    socket.on("receive-message", (data) => setMessages((prev) => [...prev, data]));
 
     socket.on("player-joined", (data) => {
-      // Handle team debate player joins
       if (data.debateType === 'team-debate') {
-        const forTeam = data.participants.filter(p => p.team === 'FOR');
-        const againstTeam = data.participants.filter(p => p.team === 'AGAINST');
-        
-        setTeamFor(forTeam);
-        setTeamAgainst(againstTeam);
+        setTeamFor(data.participants.filter(p => p.team === 'FOR'));
+        setTeamAgainst(data.participants.filter(p => p.team === 'AGAINST'));
         setTurnOrder(data.turnOrder || []);
       }
-      
-      // Update players list with all participants from this event
-      setPlayers((prev) => {
-        if (data.participants) {
-          // Replace with fresh list from server to ensure sync
-          return data.participants;
-        }
-        // Fallback if participants not included
-        const exists = prev.some(p => p.userId === data.userId);
-        if (!exists) {
-          return [...prev, { userId: data.userId, playerName: data.playerName }];
-        }
-        return prev;
-      });
-      console.log(`${data.playerName} joined. Total: ${data.totalParticipants}`, data.participants);
+      setPlayers(data.participants || []);
     });
 
-    socket.on("hand-raised", (data) => {
-      console.log(`${data.playerName} raised their hand`);
-    });
-
-    socket.on("timer-updated", (data) => {
-      setTimer(data.timeRemaining);
-    });
-
-    socket.on("debate-ended", () => {
-      handleEndDebate();
-    });
-
-    socket.on("debate-started", (data) => {
-      console.log("Debate started by admin:", data);
+    socket.on("timer-updated", (data) => setTimer(data.timeRemaining));
+    socket.on("debate-ended", () => handleEndDebate());
+    socket.on("debate-started", () => {
       setIsActive(true);
-      setTimer(300); // Sync timer
+      setTimer(300);
     });
 
     socket.on("player-disconnected", (data) => {
-      // Remove player from list
-      setPlayers((prev) =>
-        prev.filter((p) => p.userId !== data.userId)
-      );
-      // Show notification
-      console.log(data.message);
+      setPlayers((prev) => prev.filter((p) => p.userId !== data.userId));
     });
 
-    // Listen for speeches from other players
     socket.on("speech-received", (data) => {
-      console.log(`[Speech Received] ${data.playerName}: ${data.speech.substring(0, 50)}...`);
-      // Add to messages to display
       setMessages((prev) => [...prev, {
         userId: data.userId,
         playerName: data.playerName,
@@ -169,111 +105,53 @@ export default function DebateRoom() {
         timestamp: data.timestamp,
         isSpokenMessage: true
       }]);
-      // Add to speeches array
       setSpeeches((prev) => [...prev, data]);
     });
 
     return () => {
       socket.off("receive-message");
       socket.off("player-joined");
-      socket.off("hand-raised");
       socket.off("timer-updated");
       socket.off("debate-ended");
       socket.off("player-disconnected");
       socket.off("speech-received");
     };
-  }, [debateId]);
+  }, [debateId, user?.id, user?.name]);
 
   useEffect(() => {
-    console.log('[DebateRoom Timer Effect] isActive:', isActive, 'timer:', timer);
-    
     let interval;
-    
-    // Start countdown only when debate is active
     if (isActive && timer > 0) {
-      console.log('[DebateRoom Timer] Starting countdown from', timer);
       interval = setInterval(() => {
         setTimer((prev) => {
           const newTime = prev - 1;
-          console.log('[DebateRoom Timer] Decreased to:', newTime);
-          
-          // Emit timer update to server
           socket.emit("timer-update", { debateId, timeRemaining: newTime });
-          
-          // If time reaches 0, end the debate
-          if (newTime === 0) {
-            console.log('[DebateRoom Timer] Time is up!');
-            // We'll handle this outside to avoid stale closure
-          }
-          
           return newTime;
         });
       }, 1000);
     }
-    
-    // Cleanup interval on unmount or when isActive changes
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-        console.log('[DebateRoom Timer] Cleared interval');
-      }
-    };
-  }, [isActive, debateId]);
+    return () => interval && clearInterval(interval);
+  }, [isActive, debateId, timer]);
 
-  // Separate effect to handle when timer hits 0
   useEffect(() => {
-    console.log('[DebateRoom End Timer Effect] timer:', timer, 'isActive:', isActive);
-    if (timer === 0 && isActive) {
-      console.log('[DebateRoom End Timer] Time is up! Calling handleEndDebate');
-      handleEndDebate();
-    }
+    if (timer === 0 && isActive) handleEndDebate();
   }, [timer, isActive]);
 
   const handleStart = () => {
-    console.log('[DebateRoom] Starting debate');
     setIsActive(true);
-    setSpeeches([]); // Reset speeches when debate starts
+    setTimer(300);
+    setSpeeches([]);
     setDebateMetrics(null);
-    
-    // Emit start signal to server to sync everyone
-    socket.emit("start-debate", { 
-      debateId,
-      userId: user?.id,
-      playerName: user?.name
-    });
-    
-    console.log('[DebateRoom] Debate started - isActive set to true, speeches reset');
+    socket.emit("start-debate", { debateId, userId: user?.id, playerName: user?.name });
   };
 
   const handleTranscript = (transcriptData) => {
-    console.log('[DebateRoom] handleTranscript called with:', transcriptData);
-    
-    // Validate transcriptData
-    if (!transcriptData || !transcriptData.text) {
-      console.warn('[DebateRoom] Invalid transcriptData received:', transcriptData);
-      return;
-    }
-    
-    // Add speech to list
-    setSpeeches((prevSpeeches) => {
-      try {
-        const updatedSpeeches = [...prevSpeeches, transcriptData];
-        console.log('[DebateRoom] Updated speeches count:', updatedSpeeches.length);
-        console.log('[DebateRoom] Current speeches:', updatedSpeeches);
-        
-        // Update metrics with error handling
-        const metrics = trackDebateMetrics(updatedSpeeches);
-        console.log('[DebateRoom] Updated metrics:', metrics);
-        setDebateMetrics(metrics);
-        
-        return updatedSpeeches;
-      } catch (error) {
-        console.error('[DebateRoom] Error updating speeches:', error);
-        return prevSpeeches; // Keep previous state on error
-      }
+    if (!transcriptData || !transcriptData.text) return;
+    setSpeeches((prev) => {
+      const updated = [...prev, transcriptData];
+      const metrics = trackDebateMetrics(updated);
+      setDebateMetrics(metrics);
+      return updated;
     });
-
-    // Broadcast speech to other players
     socket.emit("send-message", {
       debateId,
       userId: user?.id,
@@ -284,97 +162,36 @@ export default function DebateRoom() {
 
   const handleSendMessage = () => {
     if (input.trim() && socket) {
-      socket.emit("send-message", {
-        debateId,
-        userId: user?.id,
-        playerName: user?.name,
-        text: input,
-      });
+      socket.emit("send-message", { debateId, userId: user?.id, playerName: user?.name, text: input });
       setInput("");
     }
   };
 
   const handleRaiseHand = () => {
     if (socket) {
-      if (handRaised) {
-        socket.emit("lower-hand", {
-          debateId,
-          userId: user?.id,
-          playerName: user?.name,
-        });
-      } else {
-        socket.emit("raise-hand", {
-          debateId,
-          userId: user?.id,
-          playerName: user?.name,
-        });
-      }
+      socket.emit(handRaised ? "lower-hand" : "raise-hand", { debateId, userId: user?.id, playerName: user?.name });
       setHandRaised(!handRaised);
     }
   };
 
   const handleEndDebate = async () => {
-    console.log('[DebateRoom] handleEndDebate called');
-    
-    // ⏸️ STOP AI IMMEDIATELY
-    console.log('[DebateRoom] 🛑 Stopping AI speech immediately...');
-    stopSpeech();  // Stop any ongoing text-to-speech
-    
-    // Disable debate mode to stop all speech recognition and AI processing
+    stopSpeech();
     setIsActive(false);
-    
-    // Give a tiny delay to let the speech stop properly
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    console.log('[DebateRoom] Ending debate. Speeches:', speeches);
-    console.log('[DebateRoom] Metrics:', debateMetrics);
-    
-    // Save speeches and metrics for result page
-    if (speeches && speeches.length > 0) {
-      localStorage.setItem(`speeches_${debateId}`, JSON.stringify(speeches));
-      console.log(`[DebateRoom] Saved ${speeches.length} speeches to localStorage`);
-    } else {
-      console.warn('[DebateRoom] No speeches recorded!');
-    }
-    
-    if (debateMetrics) {
-      localStorage.setItem(`debateMetrics_${debateId}`, JSON.stringify(debateMetrics));
-    }
-    
+    if (speeches?.length > 0) localStorage.setItem(`speeches_${debateId}`, JSON.stringify(speeches));
+    if (debateMetrics) localStorage.setItem(`debateMetrics_${debateId}`, JSON.stringify(debateMetrics));
     localStorage.setItem(`topic_${debateId}`, topic);
     localStorage.setItem(`roomType_${debateId}`, roomType);
     
-    // Notify server that debate has ended
     socket.emit("end-debate", { debateId });
-    
-    // Call backend to end debate (only for backend debates, not local/demo debates)
-    const isLocalDebate = debateId && debateId.startsWith('debate_');
-    if (debateId && !isLocalDebate) {
-      console.log('[DebateRoom] Ending backend debate:', debateId);
-      await endDebate(debateId);
-    } else if (isLocalDebate) {
-      console.log('[DebateRoom] Skipping backend call for local debate');
-    }
-    
-    // Navigate to results page
-    console.log('[DebateRoom] ✅ Navigating to results page...');
+    if (debateId && !debateId.startsWith('debate_')) await endDebate(debateId);
     navigate(`/results/${debateId}`);
   };
 
   const handleLeaveDebate = () => {
-    const confirmLeave = confirm(
-      "Are you sure you want to leave this debate? You won't be able to rejoin."
-    );
-
-    if (confirmLeave) {
-      // Notify other players
-      socket.emit("player-left", {
-        debateId,
-        userId: user?.id,
-        playerName: user?.name,
-      });
-
-      // Navigate back to home
+    if (confirm("Are you sure you want to leave?")) {
+      socket.emit("player-left", { debateId, userId: user?.id, playerName: user?.name });
       navigate("/");
     }
   };
@@ -383,312 +200,153 @@ export default function DebateRoom() {
   const seconds = timer % 60;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header with Topic - PROMINENT IN AI DEBATE */}
-        <div className={`${isAIDebate ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-gradient-to-r from-blue-500 to-purple-600'} text-white p-4 md:p-6 rounded-xl mb-4 shadow-lg border-2 border-white/20`}>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className={`${isAIDebate ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl'} font-bold truncate`}>
-                📌 {topic}
-              </h2>
-              <p className="text-white/90 text-xs md:text-sm mt-2">
-                {isAIDebate ? "🤖 Debating against AI Opponent" : "👥 Live Debate with Players"}
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 md:p-6 font-sans text-gray-800">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white/90 backdrop-blur-xl border-4 border-white/30 p-6 rounded-3xl mb-6 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${isAIDebate ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} mb-2 inline-block`}>
+                {isAIDebate ? '🤖 AI Debate Mode' : '👥 Multiplayer Match'}
+              </span>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-gray-800">{topic}</h1>
             </div>
-            {isAIDebate && (
-              <div className="text-4xl md:text-5xl">🤖</div>
-            )}
+            {isAIDebate && <div className="text-4xl">🤖</div>}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Main Content Area */}
-          <div className="lg:col-span-3 flex flex-col h-full">
-            {/* Timer - COMPACT at TOP (Before Animation) */}
-            <div className="text-center mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-xl shadow-md border-2 border-blue-200">
-              <div className="flex items-center justify-center gap-3">
-                <p className="text-3xl md:text-4xl font-bold text-blue-600">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border-2 border-white/50 flex flex-col items-center justify-center shadow-lg">
+                <span className="text-[10px] font-black text-gray-400 tracking-[3px] uppercase">Time Remaining</span>
+                <span className="text-4xl font-mono font-black text-blue-600">
                   {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
-                </p>
-                <p className="text-gray-600 text-xs font-semibold">⏱️ Time Left</p>
+                </span>
               </div>
-            </div>
-
-            {/* Team Display - ONLY FOR TEAM DEBATES */}
-            {isTeamDebate && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-cyan-50 rounded-xl border-2 border-emerald-300 shadow-md">
-                <p className="text-center text-sm font-bold text-gray-700 mb-3">🎪 {teamSize} Team Debate</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Team FOR */}
-                  <div className={`p-3 rounded-lg border-2 transition ${
-                    myTeam === 'FOR' 
-                      ? 'bg-green-100 border-green-500 shadow-lg scale-105' 
-                      : 'bg-gray-100 border-gray-300'
-                  }`}>
-                    <p className="text-xs font-bold text-green-700 mb-2">🟢 TEAM FOR</p>
-                    <div className="space-y-1">
-                      {teamFor.map(member => (
-                        <div key={member.userId} className="text-xs text-gray-800 flex items-center gap-1">
-                          <span className={turnOrder[currentTurnIndex] === member.userId ? '🎤' : '👤'}>
-                          </span>
-                          {member.playerName}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Team AGAINST */}
-                  <div className={`p-3 rounded-lg border-2 transition ${
-                    myTeam === 'AGAINST' 
-                      ? 'bg-red-100 border-red-500 shadow-lg scale-105' 
-                      : 'bg-gray-100 border-gray-300'
-                  }`}>
-                    <p className="text-xs font-bold text-red-700 mb-2">🔴 TEAM AGAINST</p>
-                    <div className="space-y-1">
-                      {teamAgainst.map(member => (
-                        <div key={member.userId} className="text-xs text-gray-800 flex items-center gap-1">
-                          <span className={turnOrder[currentTurnIndex] === member.userId ? '🎤' : '👤'}>
-                          </span>
-                          {member.playerName}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {turnOrder.length > 0 && (
-                  <div className="mt-3 p-2 bg-white rounded-lg border border-blue-300 text-center">
-                    <p className="text-xs font-semibold text-blue-700">
-                      Current Turn: 🎤 {
-                        teamFor.find(m => m.userId === turnOrder[currentTurnIndex])?.playerName ||
-                        teamAgainst.find(m => m.userId === turnOrder[currentTurnIndex])?.playerName ||
-                        'Waiting...'
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Video Stream Component - FOR ALL DEBATES (Jitsi handles UI) */}
-            <div className="bg-black rounded-3xl shadow-2xl mb-6 overflow-hidden h-[650px] border-4 border-gray-800 relative group">
-              <VideoStream
-                debateId={debateId}
-                userId={user?.id}
-                playerName={user?.name}
-                isAIDebate={isAIDebate}
-                participants={players}
-              />
               
-              {/* Turn Indicator Overlay */}
-              {!isAIDebate && (
-                <div className="absolute top-6 left-6 z-10">
-                  <div className={`px-6 py-3 rounded-2xl backdrop-blur-md border-2 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 ${
-                    isActive ? 'bg-blue-600/40 border-blue-400/50 text-white' : 'bg-orange-500/40 border-orange-300/50 text-white'
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-blue-400 animate-pulse' : 'bg-orange-400'}`}></div>
-                    <span className="font-black tracking-widest uppercase text-sm">
-                      {isActive ? "Debate in Progress" : "Waiting for Admin to Start"}
-                    </span>
+              {isTeamDebate && (
+                <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border-2 border-white/50 flex items-center justify-around shadow-lg">
+                   <div className="text-center">
+                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Team For</p>
+                      <p className="text-lg font-black text-gray-800">{teamFor.length}</p>
+                   </div>
+                   <div className="h-8 w-px bg-gray-200"></div>
+                   <div className="text-center">
+                      <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Team Against</p>
+                      <p className="text-lg font-black text-gray-800">{teamAgainst.length}</p>
+                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className={`bg-gray-100 rounded-3xl border-8 border-white shadow-2xl relative overflow-hidden ${isAIDebate ? 'min-h-[500px]' : 'h-[600px]'}`}>
+              {/* Mandatory Start Overlay for ALL room types when not active */}
+              {!isActive && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                   <div className="mb-8">
+                     <p className="text-sm font-black text-blue-600 tracking-[8px] uppercase mb-2">Awaiting Session</p>
+                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">System ready for debate sequence</p>
+                   </div>
+                   <button
+                     onClick={handleStart}
+                     className="px-16 py-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-3xl font-black text-3xl shadow-2xl transition-all hover:scale-105 active:scale-95 border-b-8 border-black/20 flex flex-col items-center gap-1 group"
+                   >
+                     <span>START DEBATE ⚡</span>
+                     <span className="text-[10px] opacity-70 group-hover:opacity-100 tracking-[3px]">CLICK TO BEGIN</span>
+                   </button>
+                </div>
+              )}
+
+              {isAIDebate ? (
+                <AdvancedSpeechRecognition
+                  isActive={isActive}
+                  debateId={debateId}
+                  topic={topic}
+                  socket={socket}
+                  roomType="ai"
+                  onSpeechEnd={handleTranscript}
+                />
+              ) : (
+                <div className="h-full relative bg-gray-50/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 h-full">
+                    {players.map((player) => (
+                      <div key={player.userId} className="relative rounded-2xl overflow-hidden border-4 border-white group bg-white shadow-md">
+                        <VideoStream player={player} isMe={player.userId === user?.id} />
+                        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg border border-gray-100 shadow-lg group-hover:opacity-100 transition-opacity">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-800">{player.playerName}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {players.length === 1 && (
+                      <div className="border-4 border-dashed border-gray-200 rounded-2xl flex items-center justify-center text-gray-400 bg-white/50">
+                        <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Waiting for challenger...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Turn Control Buttons - Admin Only */}
-            {!isAIDebate && !isActive && (
-              <div className="flex flex-col items-center justify-center p-8 bg-white border-4 border-dashed border-blue-200 rounded-3xl mb-8 animate-pulse hover:animate-none transition-all">
-                <h3 className="text-2xl font-black text-blue-900 mb-2 uppercase tracking-tighter">Ready to start?</h3>
-                <p className="text-blue-600 mb-6 font-medium text-center max-w-md">Once you start, all participants will be notified and the timer will begin.</p>
-                <button
-                  onClick={handleStart}
-                  className="px-12 py-5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl font-black text-xl shadow-2xl shadow-blue-500/40 transform hover:scale-110 active:scale-95 transition-all uppercase tracking-widest border-b-8 border-blue-900"
-                >
-                  🚀 Launch Debate
-                </button>
-              </div>
-            )}
-
-
-            {/* User-Only Debate Instructions */}
-            {!isAIDebate && isActive && (
-              <div className="bg-blue-50 rounded-xl shadow-md p-4 mb-4 border-2 border-blue-300">
-                <p className="text-center text-blue-700 font-semibold">🎤 Speak directly - your voice will be heard by other participants in real-time</p>
-              </div>
-            )}
-
-            {/* Message Input */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                disabled={!isActive}
-                placeholder={
-                  isActive ? "Type your argument..." : "Start the debate to send messages"
-                }
-                className="flex-1 px-3 py-2 text-sm border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!isActive}
-                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 text-sm rounded-lg font-semibold transition shadow-md"
-              >
-                Send
-              </button>
-            </div>
-
-            {/* Control Buttons - BOTTOM (Full Width, Better Spacing) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-              {!isActive ? (
-                <button
-                  onClick={handleStart}
-                  className="col-span-1 md:col-span-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg transform hover:scale-105"
-                >
-                  🎬 Start Debate
-                </button>
-              ) : (
-                <button
-                  onClick={handleEndDebate}
-                  className="col-span-1 md:col-span-2 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg transform hover:scale-105"
-                >
-                  🛑 End Debate
+            <div className="flex gap-4 mt-6 justify-center flex-wrap">
+              {isActive && (
+                <button onClick={handleEndDebate} className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-xs tracking-widest uppercase shadow-lg transition-all">
+                  🛑 End Session
                 </button>
               )}
               {!isAIDebate && (
-                <button
-                  onClick={handleRaiseHand}
-                  className={`col-span-1 py-3 rounded-lg font-bold text-white transition shadow-md text-sm transform hover:scale-105 ${
-                    handRaised
-                      ? "bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
-                      : "bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-                  }`}
-                >
-                  <span>{handRaised ? "👋" : "✋"}</span>
+                <button onClick={handleRaiseHand} className={`px-8 py-3 rounded-xl font-black text-xs tracking-widest uppercase italic border-2 transition-all ${handRaised ? 'bg-orange-500 text-white border-orange-400 shadow-lg' : 'bg-white text-gray-600 border-gray-100 shadow-md'}`}>
+                  {handRaised ? '✋ Lower Hand' : '🙋 Raise Hand'}
                 </button>
               )}
-              <button
-                onClick={handleLeaveDebate}
-                className="col-span-1 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white py-3 rounded-lg font-bold text-sm transition shadow-md transform hover:scale-105"
-              >
-                🚪 Leave
+              <button onClick={handleLeaveDebate} className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-black text-xs tracking-widest uppercase italic shadow-md transition-all">
+                🚪 Exit
               </button>
             </div>
           </div>
 
-          {/* Sidebar - Players & Info */}
           <div className="lg:col-span-1">
-            {/* Players List & Live Leaderboard */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3 sticky top-6">
-              <h3 className="font-semibold text-sm mb-2">👥 Participants {!isAIDebate && isActive && '(Live Leaderboard)'}</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {/* You */}
-                <div className="flex items-center gap-2 p-2 bg-green-50 rounded border-2 border-green-200">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {user?.name?.[0] || "?"}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">You</p>
-                    <p className="text-xs text-gray-600">
-                      {user?.name}
-                    </p>
-                  </div>
-                  {/* Show points for user-only debates */}
-                  {!isAIDebate && (
-                    <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded font-bold">
-                      {Math.max(0, speeches.filter(s => s.speaker === "user").reduce((sum, s) => sum + (s.points || 0), 0))} pts
-                    </span>
-                  )}
-                  <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded">
-                    Online
-                  </span>
+            <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 border-4 border-white shadow-2xl h-full sticky top-6">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-gray-100">
+                <h3 className="text-xs font-black tracking-[3px] uppercase text-gray-400">The Roster</h3>
+                <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-orange-400'}`}></div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100 shadow-sm">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white uppercase">{user?.name?.[0]?.toUpperCase() || 'Y'}</div>
+                      <div>
+                        <p className="text-xs font-black text-gray-800">{user?.name || 'You'}</p>
+                        <p className="text-[8px] text-blue-600 font-bold uppercase tracking-widest">Arena Prime</p>
+                      </div>
+                   </div>
                 </div>
 
-                {/* Other Players / AI Opponent */}
                 {isAIDebate ? (
-                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      🤖
+                  <div className="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-xl">🤖</div>
+                        <div>
+                          <p className="text-xs font-black text-gray-800">SKILLFORCE AI</p>
+                          <p className="text-[8px] text-purple-400 font-bold uppercase tracking-widest">Antagonist</p>
+                        </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">AI Opponent</p>
-                      <p className="text-xs text-gray-600">Artificial Intelligence</p>
-                    </div>
-                    {/* Show AI points */}
-                    <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-bold">
-                      {Math.max(0, speeches.filter(s => s.speaker === "ai").reduce((sum, s) => sum + (s.points || 0), 0))} pts
-                    </span>
-                    <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
-                      Online
-                    </span>
                   </div>
-                ) : players.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Waiting for other players...
-                  </p>
                 ) : (
-                  players.map((player, idx) => {
-                    // Calculate points for this player (from speeches)
-                    const playerPoints = Math.max(0, speeches.filter(s => s.speaker === player.playerName).reduce((sum, s) => sum + (s.points || 0), 0));
-                    return (
-                      <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {player.playerName?.[0] || "?"}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{player.playerName || "Player"}</p>
-                          <p className="text-xs text-gray-600">Participant</p>
-                        </div>
-                        {/* Show live points in user-only debates */}
-                        {!isAIDebate && (
-                          <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-bold">
-                            {playerPoints} pts
-                          </span>
-                        )}
-                        <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded">
-                          Online
-                        </span>
-                      </div>
-                    );
-                  })
+                  players.filter(p => p.userId !== user?.id).map((p, i) => (
+                    <div key={i} className="bg-gray-50 p-4 rounded-2xl border-2 border-gray-100 shadow-sm">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white uppercase">{p.playerName?.[0]?.toUpperCase() || 'P'}</div>
+                          <div>
+                            <p className="text-xs font-black text-gray-800">{p.playerName}</p>
+                            <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest">Challenger</p>
+                          </div>
+                       </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
-
-            {/* Debate Status */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3">
-              <h3 className="font-semibold text-sm mb-2">📊 Status</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={` font-semibold ${isActive ? "text-green-600" : "text-orange-600"}`}>
-                    {isActive ? "🔴 Live" : "⏸️ Paused"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Players:</span>
-                  <span className="font-semibold">{players.length + 1}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Messages:</span>
-                  <span className="font-semibold">{messages.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Hand Raised:</span>
-                  <span className="font-semibold">{handRaised ? "✅ Yes" : "❌ No"}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Leave Debate Button - Sidebar */}
-            <button
-              onClick={handleLeaveDebate}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
-            >
-              <span>🚪</span>
-              <span>Leave Debate</span>
-            </button>
           </div>
         </div>
       </div>

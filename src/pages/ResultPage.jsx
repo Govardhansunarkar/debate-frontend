@@ -53,44 +53,39 @@ export default function ResultPage() {
           const parsedSpeeches = JSON.parse(savedSpeeches);
           setSpeeches(parsedSpeeches);
 
-          // ⚡ OPTIMIZATION: Show instant feedback IMMEDIATELY
-          if (isAIDebateTemp) {
-            // AI Debate: Use quick fallback feedback
-            const quickFeedback = generateQuickFeedback(parsedSpeeches);
-            const simplifiedQuickFeedback = simplifyFeedback(quickFeedback, parsedSpeeches);
-            console.log('[ResultPage] Quick fallback feedback loaded immediately:', simplifiedQuickFeedback);
-            setFeedback(simplifiedQuickFeedback);
-          } else {
-            // User-Only Debate: Generate per-user feedback instantly
-            const perUserFeedbackData = generatePerUserFeedback(parsedSpeeches);
-            console.log('[ResultPage] Per-user feedback generated:', perUserFeedbackData);
-            setPerUserFeedback(perUserFeedbackData);
-            setFeedback(null); // No single feedback for user debates
-          }
-
-          // ⚡ Fetch REAL AI feedback in background for both AI and Private (User-Only) debates
-          if (isAIDebateTemp || isUserOnlyDebate) {
+          // ⚡ HIGH IMPORTANCE: Show real analysis IMMEDIATELY if we have enough speeches
+          if (parsedSpeeches.length > 2) {
             setFetchingFeedback(true);
             (async () => {
               try {
-                console.log('[ResultPage] ⏳ Fetching full AI analysis in background for', savedRoomType, '...');
+                console.log('[ResultPage] ⏳ Fetching PRIORITY AI analysis...');
                 const feedbackData = await getDebateFeedback(
                   debateId,
                   savedTopic || "General Debate",
                   parsedSpeeches
                 );
-                console.log('[ResultPage] ✅ Full AI analysis received:', feedbackData);
                 
-                const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
-                console.log('[ResultPage] Simplified AI analysis:', simplifiedFeedback);
-                setFeedback(simplifiedFeedback);
+                if (feedbackData?.success) {
+                  const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
+                  setFeedback(simplifiedFeedback);
+                } else {
+                  // If success is false, use fallback immediately
+                  const quickFeedback = generateQuickFeedback(parsedSpeeches);
+                  setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
+                }
               } catch (err) {
-                console.error('[ResultPage] Error fetching AI analysis:', err);
-                // Keep using quick feedback if API fails
+                console.error('[ResultPage] Priority AI analysis failed:', err);
+                // Fallback to quick feedback only if priority fails
+                const quickFeedback = generateQuickFeedback(parsedSpeeches);
+                setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
               } finally {
                 setFetchingFeedback(false);
               }
             })();
+          } else {
+            // Very short debate - use quick feedback
+            const quickFeedback = generateQuickFeedback(parsedSpeeches);
+            setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
           }
         } else {
           console.warn('[ResultPage] No speeches found in localStorage!');

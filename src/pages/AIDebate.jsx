@@ -86,51 +86,63 @@ export default function AIDebate() {
 
   if (debateStarted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-600 to-red-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
-          <h2 className="text-3xl font-bold mb-6">🤖 Debate Starting</h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-white/30">
+          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6">🤖 Debate Starting</h2>
           <div className="mb-6">
-            <p className="text-gray-600 mb-2">Your AI opponent is being prepared...</p>
-            <div className="inline-block">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            <p className="text-gray-600 mb-4 font-semibold">Your AI opponent is being prepared...</p>
+            <div className="inline-block relative">
+              <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-20"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500"></div>
             </div>
           </div>
-          <p className="text-sm text-gray-500">Transferring you to the debate room...</p>
+          <p className="text-sm text-gray-500 font-medium italic">Transferring you to the debate room...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-600 to-red-700 p-4">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-8 text-center">🤖 Debate with AI</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 md:p-8 flex items-center justify-center">
+      <div className="max-w-3xl w-full bg-white rounded-3xl shadow-2xl p-6 md:p-10 border-4 border-white/30">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
+            🤖 Debate with AI
+          </h1>
+          <p className="text-gray-600 font-semibold italic">Practice your skills against our advanced AI</p>
+        </div>
 
-        <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+        <div className="space-y-8">
           {/* Difficulty Selection */}
-          <h2 className="text-2xl font-bold mb-4">Choose Difficulty</h2>
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {difficulties.map((d) => (
-              <button
-                key={d.level}
-                onClick={() => setDifficulty(d.level)}
-                className={`p-4 rounded-lg font-semibold transition ${
-                  difficulty === d.level
-                    ? "bg-orange-500 text-white ring-2 ring-orange-300"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <div className="text-2xl mb-2">{d.emoji}</div>
-                <div>{d.level}</div>
-                <div className="text-xs">{d.description}</div>
-              </button>
-            ))}
-          </div>
+          <section>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-blue-100 p-2 rounded-lg text-blue-600 text-sm">Step 1</span> Choose Difficulty
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              {difficulties.map((d) => (
+                <button
+                  key={d.level}
+                  onClick={() => setDifficulty(d.level)}
+                  className={`p-4 rounded-2xl font-bold transition-all transform hover:scale-105 active:scale-95 border-2 ${
+                    difficulty === d.level
+                      ? "bg-purple-600 text-white border-purple-400 shadow-lg"
+                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                  }`}
+                >
+                  <div className="text-3xl mb-2">{d.emoji}</div>
+                  <div className="capitalize">{d.level}</div>
+                  <div className="text-[10px] opacity-80 mt-1 font-medium">{d.description}</div>
+                </button>
+              ))}
+            </div>
+          </section>
 
           {/* Topic Selection */}
-          <h2 className="text-2xl font-bold mb-4">Choose Topic</h2>
-          <div className="mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+          <section>
+            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="bg-blue-100 p-2 rounded-lg text-blue-600 text-sm">Step 2</span> Choose Topic
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
               {suggestedTopics.map((t, idx) => (
                 <button
                   key={idx}
@@ -138,10 +150,10 @@ export default function AIDebate() {
                     setTopic(t);
                     setTopicError("");
                   }}
-                  className={`p-3 rounded-lg text-left text-sm transition ${
+                  className={`p-4 rounded-xl text-left text-sm font-semibold transition-all border-2 ${
                     topic === t
-                      ? "bg-blue-500 text-white ring-2 ring-blue-300"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-blue-600 text-white border-blue-400 shadow-md"
+                      : "bg-gray-50 text-gray-700 border-gray-100 hover:border-blue-200"
                   }`}
                 >
                   {t}
@@ -149,43 +161,62 @@ export default function AIDebate() {
               ))}
             </div>
 
-            {/* Custom Topic */}
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Or enter your own topic:</p>
+            <div className="relative group">
+              <p className="text-sm text-gray-500 mb-2 font-bold ml-1 uppercase tracking-wider">Or Enter Your Own:</p>
               <input
                 type="text"
-                placeholder="Enter a debate topic..."
+                placeholder="Ex: Impact of space exploration..."
                 value={topic}
                 onChange={(e) => {
                   setTopic(e.target.value);
                   setTopicError("");
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition ${
-                  topicError ? "border-red-500 bg-red-50" : "border-gray-300"
+                className={`w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl font-semibold focus:outline-none transition-all ${
+                  topicError 
+                    ? "border-red-400 focus:border-red-500" 
+                    : "border-gray-200 focus:border-blue-500"
                 }`}
               />
               {topicError && (
-                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded">
-                  <p className="text-red-700 text-sm whitespace-pre-wrap">{topicError}</p>
+                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded-xl text-red-700 text-sm font-bold shadow-sm">
+                  {topicError}
                 </div>
               )}
             </div>
+          </section>
+
+          {/* Start Action */}
+          <div className="pt-4">
+            <button
+              onClick={handleStartDebate}
+              disabled={loading || topicValidating || !topic.trim()}
+              className={`w-full py-5 rounded-2xl font-bold text-xl text-white transition-all transform hover:scale-[1.02] active:scale-95 shadow-xl flex items-center justify-center gap-3 ${
+                loading || topicValidating || !topic.trim()
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-b-4 border-black/20"
+              }`}
+            >
+              {topicValidating ? (
+                <>
+                  <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                  Analyzing Topic...
+                </>
+              ) : loading ? (
+                <>
+                  <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                  Initializing...
+                </>
+              ) : (
+                <>
+                  <span>Start AI Arena</span>
+                  <span className="text-2xl">⚡</span>
+                </>
+              )}
+            </button>
+            <p className="text-center text-gray-500 text-xs mt-4 font-semibold italic">
+              💪 Improve skills | 🧠 AI feedback | 🏆 Track progress
+            </p>
           </div>
-
-          {/* Start Button */}
-          <button
-            onClick={handleStartDebate}
-            disabled={loading || topicValidating || !topic.trim()}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold text-lg"
-          >
-            {topicValidating ? "✓ Validating topic..." : loading ? "Starting Debate..." : "Start Debate 🎬"}
-          </button>
-        </div>
-
-        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
-          <p className="text-sm text-gray-700">
-            💡 <strong>Tip:</strong> The AI will challenge your arguments and provide constructive feedback at the end!
-          </p>
         </div>
       </div>
     </div>

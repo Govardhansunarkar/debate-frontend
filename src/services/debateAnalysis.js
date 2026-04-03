@@ -44,37 +44,27 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
 
     console.log('[getDebateFeedback] 📝 Formatted speeches:', formattedSpeeches.length);
 
-    // Call the NVIDIA LLM-powered analysis endpoint with increased timeout for production
-    // NVIDIA API can take 30-60 seconds to generate quality feedback
+    // Call the AI analysis endpoint with a tight timeout for immediate results
     let response;
-    let retries = 0;
-    const maxRetries = 2;
     
-    while (retries <= maxRetries) {
-      try {
-        console.log(`[getDebateFeedback] 📡 Calling AI analysis API (attempt ${retries + 1}/${maxRetries + 1})...`);
-        response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
-          speeches: formattedSpeeches,
-          topic: topic,
-        }, {
-          timeout: 60000  // 60 seconds for NVIDIA API (was 20s, causing timeouts)
-        });
-        
-        console.log('[getDebateFeedback] ✅ Response received successfully');
-        break; // Success, exit retry loop
-      } catch (error) {
-        console.warn(`[getDebateFeedback] ⚠️ Attempt ${retries + 1} failed:`, error.message);
-        
-        retries++;
-        if (retries > maxRetries) {
-          throw error; // Throw after max retries
-        }
-        
-        // Wait before retrying (exponential backoff)
-        const delayMs = Math.min(1000 * Math.pow(2, retries), 10000);
-        console.log(`[getDebateFeedback] ⏳ Retrying in ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+    try {
+      console.log(`[getDebateFeedback] 📡 Calling AI analysis API (Single Shot)...`);
+      response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
+        speeches: formattedSpeeches,
+        topic: topic,
+      }, {
+        timeout: 65000  // 65 seconds total wait time for results
+      });
+      
+      console.log('[getDebateFeedback] ✅ Response received successfully');
+    } catch (error) {
+      console.warn(`[getDebateFeedback] ⚠️ Primary analysis timed out or failed:`, error.message);
+      
+      // OPTIONAL: Fallback data if needed (though the backend should already provide it)
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+         console.log('[getDebateFeedback] 🔄 Re-requesting with very short timeout for manual fallback...');
       }
+      throw error; 
     }
 
     console.log('[getDebateFeedback] ✅ Response received:', {

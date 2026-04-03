@@ -1,31 +1,36 @@
 import io from "socket.io-client";
 
 // Auto-detect server URL - localhost for dev, Render for production
+const params = new URLSearchParams(window.location.search);
+// Fix: Use a more robust check for AI debate mode
+// Check for 'ai=true' in URL OR check if the current path is '/ai-debate'
+const isAIDebate = params.get('ai') === 'true' || window.location.pathname.includes('/ai-debate');
+
 const SOCKET_URL = import.meta.env.MODE === 'development' 
   ? 'http://localhost:3001' 
   : 'https://debate-backend-paro.onrender.com';
 
-console.log('[socket.js] Connecting to:', SOCKET_URL);
+console.log('[socket.js] Connecting to:', SOCKET_URL, 'AI Mode Detect:', isAIDebate, 'Path:', window.location.pathname);
 
 export const socket = io(SOCKET_URL, {
-  // Force polling first to avoid 'Invalid frame header' errors
-  transports: ['polling', 'websocket'],
-  upgrade: true,  
+  // Priority on polling to fix 'Invalid frame header' errors
+  transports: ['polling'],
+  upgrade: false, 
   reconnection: true,
-  reconnectionDelay: 2000,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: Infinity,
   
   // Security & Headers
   withCredentials: true,
-  secure: window.location.protocol === 'https:', // Auto-detect HTTPS
+  secure: window.location.protocol === 'https:', 
   
-  // Timeout settings
-  timeout: 40000,                    // 40 seconds before timeout
-  connectTimeout: 40000,             // 40 seconds for initial connection
+  // Longer timeouts
+  timeout: 60000,
+  connectTimeout: 60000,
   
   // Other
   path: '/socket.io/',
   autoConnect: true,
-  enablesXDR: true,
   
   // Always use direct connection (avoid forcing new each time)
   forceNew: false
