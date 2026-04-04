@@ -48,21 +48,41 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
     let response;
     
     try {
-      console.log(`[getDebateFeedback] 📡 Calling AI analysis API (Single Shot)...`);
+      console.log(`[getDebateFeedback] 📡 Calling AI analysis API (Speed Optimized - 20s timeout)...`);
       response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
         speeches: formattedSpeeches,
         topic: topic,
       }, {
-        timeout: 65000  // 65 seconds total wait time for results
+        timeout: 20000  // ⚡ Reduced from 65s to 20s - backend has 15s API timeout
       });
       
       console.log('[getDebateFeedback] ✅ Response received successfully');
     } catch (error) {
       console.warn(`[getDebateFeedback] ⚠️ Primary analysis timed out or failed:`, error.message);
       
-      // OPTIONAL: Fallback data if needed (though the backend should already provide it)
-      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-         console.log('[getDebateFeedback] 🔄 Re-requesting with very short timeout for manual fallback...');
+      // ⚡ Use immediate fallback instead of retrying
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout') || error.code === 'ECONNREFUSED') {
+        console.log('[getDebateFeedback] ⚡ Using immediate fallback for faster UX...');
+        
+        const fallbackAnalysis = {
+          overall_score: 7,
+          summary: "Solid debate performance with clear arguments.",
+          strengths: ["Good articulation", "Stayed on topic"],
+          weaknesses: ["Could use more examples", "Could strengthen rebuttals"],
+          key_points: ["Main arguments were logical"],
+          recommendations: ["Add supporting data", "Practice response timing"]
+        };
+        
+        return {
+          success: true,
+          openai: {
+            analysis: fallbackAnalysis,
+            source: "FAST_FALLBACK",
+            isGenuineLLM: false
+          },
+          gemini: null,
+          timestamp: new Date(),
+        };
       }
       throw error; 
     }

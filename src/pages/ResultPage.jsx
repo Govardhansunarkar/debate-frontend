@@ -53,9 +53,20 @@ export default function ResultPage() {
           const parsedSpeeches = JSON.parse(savedSpeeches);
           setSpeeches(parsedSpeeches);
 
-          // ⚡ HIGH IMPORTANCE: Show real analysis IMMEDIATELY if we have enough speeches
+          // ⚡ SPEED: Show immediate quick feedback first, then fetch LLM analysis in background
           if (parsedSpeeches.length > 2) {
             setFetchingFeedback(true);
+            
+            // Show quick feedback immediately (instant)
+            const quickFeedback = generateQuickFeedback(parsedSpeeches);
+            setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
+            
+            // Then fetch real analysis in background with timeout
+            const feedbackTimeout = setTimeout(() => {
+              console.log('[ResultPage] ⏰ Feedback still loading after 5s, showing quick feedback...');
+              setFetchingFeedback(false);
+            }, 5000); // Max wait 5 seconds
+            
             (async () => {
               try {
                 console.log('[ResultPage] ⏳ Fetching PRIORITY AI analysis...');
@@ -65,19 +76,15 @@ export default function ResultPage() {
                   parsedSpeeches
                 );
                 
+                clearTimeout(feedbackTimeout);
+                
                 if (feedbackData?.success) {
                   const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
                   setFeedback(simplifiedFeedback);
-                } else {
-                  // If success is false, use fallback immediately
-                  const quickFeedback = generateQuickFeedback(parsedSpeeches);
-                  setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
+                  console.log('[ResultPage] ✅ LLM feedback loaded successfully');
                 }
               } catch (err) {
-                console.error('[ResultPage] Priority AI analysis failed:', err);
-                // Fallback to quick feedback only if priority fails
-                const quickFeedback = generateQuickFeedback(parsedSpeeches);
-                setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
+                console.warn('[ResultPage] LLM analysis not available, using quick feedback:', err.message);
               } finally {
                 setFetchingFeedback(false);
               }

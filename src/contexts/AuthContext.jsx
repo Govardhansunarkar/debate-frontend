@@ -2,9 +2,21 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const getBackendBaseUrl = () => {
+  const configuredUrl = import.meta.env.VITE_API_URL;
+
+  if (configuredUrl) {
+    return configuredUrl.endsWith('/api') ? configuredUrl : `${configuredUrl}/api`;
+  }
+
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3001/api'
+    : 'https://debate-backend-paro.onrender.com/api';
+};
+
 const syncUserWithBackend = async (userData) => {
   try {
-    const API_URL = "http://localhost:3001/api/users/login"; // आपका बैकएंड URL
+    const API_URL = `${getBackendBaseUrl()}/users/login`;
     
     const response = await fetch(API_URL, {
       method: "POST",
@@ -21,11 +33,14 @@ const syncUserWithBackend = async (userData) => {
 
     if (response.ok) {
       console.log("✅ User synced with Firebase via Backend!");
-    } else {
-      console.error("❌ Failed to sync user with Backend");
+      return true;
     }
+
+    console.error("❌ Failed to sync user with Backend");
+    return false;
   } catch (error) {
     console.error("❌ Network error while syncing user:", error.message);
+    return false;
   }
 };
 
