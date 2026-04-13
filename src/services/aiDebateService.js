@@ -31,6 +31,7 @@ export const getAIResponse = async (userSpeech, topic, debateContext, speechMeta
       topic: topic,
       debateContext: formattedContext,
       speechMeta: {
+        ...speechMeta,
         speechDuration: speechMeta?.speechDuration || null,
         transcriptSource: speechMeta?.transcriptSource || "final",
         wordCount: userSpeech ? userSpeech.split(/\s+/).filter(Boolean).length : 0
@@ -44,7 +45,7 @@ export const getAIResponse = async (userSpeech, topic, debateContext, speechMeta
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 60000  // 60 second timeout - increased to account for NVIDIA unlimited wait time
+      timeout: 45000  // 45 second timeout - prioritize fast responses + fallback quality
     });
     
     console.log('[aiDebateService] Response received:', response.data);

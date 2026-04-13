@@ -22,7 +22,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   const interimTranscriptRef = useRef("");
   const listeningStartTimeRef = useRef(null);
   const silenceTimeoutRef = useRef(null);  // Auto-submit after 5s silence
-  const inactivityTimeoutRef = useRef(null);  // AI counter-attack after 20s inactivity
+  const inactivityTimeoutRef = useRef(null);  // Reserved for inactivity management
+  const autoCounterCooldownRef = useRef(0);
   const lastActivityRef = useRef(Date.now());
   const noSpeechCounterRef = useRef(0);  // Retry counter for no-speech errors
 
@@ -111,19 +112,19 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       interimTranscriptRef.current = interimTranscript;
       setUserTranscript(displayText);
 
-      // Auto-submit after EXACTLY 3 seconds of silence while speaking
+      // Auto-submit after 2-3 seconds of silence while speaking
       if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
       
-      // We only start the 3s timer if the user has actually said something (interim or final)
+      // We only start the silence timer if the user has actually said something (interim or final)
       if (roomType === 'ai' && (finalTranscriptRef.current.trim() || interimTranscript.trim())) {
         silenceTimeoutRef.current = setTimeout(() => {
-          console.log("[SpeechRecognition] 3s silence detected - Force stopping Mic and submitting to LLM...");
-          if (recognitionRef.current) {
+          console.log("[SpeechRecognition] 2.5s silence detected - Auto-submitting to LLM...");
+          if (recognitionRef.current && isListening) {
             // STOP THE RECOGNITION - This triggers the .onend handler which sends to LLM
             recognitionRef.current.stop();
             setIsListening(false);
           }
-        }, 3000); 
+        }, 2500);  // Reduced to 2.5 seconds for faster response
       }
     };
 
@@ -159,30 +160,13 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       errorMsg = errorMap[event.error] || `Speech error: ${event.error}`;
       console.warn("[SpeechRecognition] Error message:", errorMsg);
       
-      // Handle "no-speech" error - auto retry without showing error
+      // Manual speak mode: do not auto-restart on no-speech errors.
       if (event.error === "no-speech") {
         noSpeechCounterRef.current++;
         console.log(`[SpeechRecognition] No-speech error count: ${noSpeechCounterRef.current}/2`);
-        
-        if (noSpeechCounterRef.current <= 5) { // INCREASED RETRIES
-          // Auto-restart without showing error to user
-          console.log("[SpeechRecognition] Auto-restarting speech recognition...");
-          setTimeout(() => {
-            try {
-              setIsListening(true);
-              recognition.start();
-            } catch (e) {
-              console.error("[SpeechRecognition] Failed to restart:", e);
-              // Only set error if really failed
-              if (noSpeechCounterRef.current > 4) setSubmissionError(errorMsg);
-            }
-          }, 400); 
-          return;
-        } else {
-          setSubmissionError("Please speak directly into the microphone.");
-          setIsListening(false);
-          noSpeechCounterRef.current = 0;
-        }
+        setSubmissionError("Please speak directly into the microphone.");
+        setIsListening(false);
+        noSpeechCounterRef.current = 0;
       } else {
         setSubmissionError(errorMsg);
         setIsListening(false);
@@ -194,9 +178,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       console.log("[SpeechRecognition] Listening ended");
       setIsListening(false);
 
-      // REMOVED AUTO-RESTART LOGIC: User must now manually click 'SPEAK' to rejoin the debate
-      // (This prevents AI from hearing its own voice and creating a feedback loop)
-      console.log("[SpeechRecognition] ⏹️ Mic turned OFF. User must click 'SPEAK' for next turn.");
+      // Manual speak mode: microphone stops after each submission.
+      console.log("[SpeechRecognition] ⏹️ Microphone session ended. User must click SPEAK to talk again.");
 
       // Calculate speech duration in seconds
       const speechDuration = listeningStartTimeRef.current 
@@ -371,10 +354,10 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
           return [...prev, aiHistoryItem];
         });
 
-        // Trigger TTS
+        // Trigger TTS only. Manual speak mode means no auto-restart after AI finishes.
         setTimeout(() => {
           speakText(aiText).then(() => {
-            console.log("[SpeechRecognition] AI finished speaking");
+            console.log("[SpeechRecognition] AI finished speaking.");
             setIsAISpeaking(false);
             setIsSubmitting(false);
             isSubmittingRef.current = false;
@@ -396,64 +379,6 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       setIsAISpeaking(false);
     }
   };
-
-  const handleAIAutoCounterattack = async (currentDebateHistory) => {
-    // Only triggering if no activity for 20+ seconds
-    if (!isActive || isSubmittingRef.current || isAISpeaking) return;
-    
-    // Check if enough time has passed since last activity
-    const timeSinceLastActivity = Date.now() - lastActivityRef.current;
-    if (timeSinceLastActivity < 20000) return;
-
-    try {
-      console.log("[SpeechRecognition] ⚡ Auto-Counterattack triggered!");
-      setSubmissionError(null);
-      setIsSubmitting(true);
-      isSubmittingRef.current = true;
-      setIsAISpeaking(true);
-
-      const response = await getAIResponse("No response from opponent. Mock their silence.", topic, currentDebateHistory);
-
-      if (response.success) {
-        const aiText = response.response;
-        setAiResponse(aiText);
-        
-        const aiHistoryItem = {
-          speaker: "ai",
-          text: aiText,
-          points: (response.points || 15) + 5, // Bonus for speed
-          timestamp: new Date(),
-          engine: response.engine,
-          duration: Math.round((aiText.split(" ").length / 150) * 60)
-        };
-
-        setDebateHistory(prev => [...prev, aiHistoryItem]);
-        setAiPoints(pts => pts + (aiHistoryItem.points));
-
-        speakText(aiText, () => {
-          setIsAISpeaking(false);
-          setIsSubmitting(false);
-          isSubmittingRef.current = false;
-        });
-      }
-    } catch (err) {
-      console.error("[SpeechRecognition] Counter-attack error:", err);
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      setIsAISpeaking(false);
-    }
-  };
-
-  // Check for inactivity every 5 seconds
-  useEffect(() => {
-    if (!isActive || roomType !== 'ai') return;
-
-    const intervalId = setInterval(() => {
-      handleAIAutoCounterattack(debateHistory);
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [isActive, debateHistory, roomType]);
 
   // Start listening
   const handleStartListening = () => {

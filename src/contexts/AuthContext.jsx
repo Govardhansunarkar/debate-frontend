@@ -32,7 +32,7 @@ const syncUserWithBackend = async (userData) => {
     });
 
     if (response.ok) {
-      console.log("✅ User synced with Firebase via Backend!");
+      console.log("✅ User synced with backend!");
       return true;
     }
 
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (googleResponse) => {
+  const login = async (googleResponse) => {
     try {
       const credential = googleResponse.credential;
       
@@ -86,8 +86,8 @@ export const AuthProvider = ({ children }) => {
         loginTime: new Date().toISOString()
       };
 
-      // 👇 बैकएंड (Firebase) में यूजर डेटा भेजने के लिए
-      syncUserWithBackend(userData);
+      // 👇 बैकएंड में यूजर डेटा भेजने के लिए
+      await syncUserWithBackend(userData);
 
       // Store in localStorage
       localStorage.setItem('authUser', JSON.stringify(userData));
