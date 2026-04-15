@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import { validateTopic } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import { FiArrowRight, FiCpu, FiLoader, FiSliders, FiTarget } from "react-icons/fi";
 
 export default function AIDebate() {
   const { user } = useAuth();
@@ -16,9 +17,9 @@ export default function AIDebate() {
   const navigate = useNavigate();
 
   const difficulties = [
-    { level: "easy", emoji: "🟢", description: "AI beginner" },
-    { level: "medium", emoji: "🟡", description: "AI intermediate" },
-    { level: "hard", emoji: "🔴", description: "AI expert" },
+    { level: "easy", label: "Easy", description: "AI beginner" },
+    { level: "medium", label: "Medium", description: "Balanced" },
+    { level: "hard", label: "Hard", description: "AI expert" },
   ];
 
   const suggestedTopics = [
@@ -86,52 +87,57 @@ export default function AIDebate() {
 
   if (debateStarted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-4 border-white/30">
-          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-6">🤖 Debate Starting</h2>
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-sky-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-violet-100 bg-white/95 p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
+            <FiCpu className="h-6 w-6" />
+          </div>
+          <h2 className="text-2xl font-semibold text-slate-900 mb-4">Debate starting</h2>
           <div className="mb-6">
-            <p className="text-gray-600 mb-4 font-semibold">Your AI opponent is being prepared...</p>
-            <div className="inline-block relative">
-              <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-20"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500"></div>
+            <p className="text-slate-600 mb-4 font-medium">Your AI opponent is being prepared.</p>
+            <div className="inline-flex items-center justify-center rounded-full border border-violet-100 bg-violet-50 p-4">
+              <FiLoader className="h-8 w-8 animate-spin text-violet-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 font-medium italic">Transferring you to the debate room...</p>
+          <p className="text-sm text-slate-500">Transferring you to the debate room...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 md:p-8 flex items-center justify-center">
-      <div className="max-w-3xl w-full bg-white rounded-3xl shadow-2xl p-6 md:p-10 border-4 border-white/30">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-sky-50 p-4 md:p-8 flex items-center justify-center">
+      <div className="max-w-4xl w-full rounded-2xl border border-violet-100 bg-white/95 p-6 md:p-10 shadow-sm">
         <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
-            🤖 Debate with AI
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
+            <FiCpu className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-3">
+            Debate with AI
           </h1>
-          <p className="text-gray-600 font-semibold italic">Practice your skills against our advanced AI</p>
+          <p className="text-slate-600">Practice your skills against the AI coach.</p>
         </div>
 
         <div className="space-y-8">
           {/* Difficulty Selection */}
           <section>
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-blue-100 p-2 rounded-lg text-blue-600 text-sm">Step 1</span> Choose Difficulty
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-600">1</span>
+              <FiSliders className="h-4 w-4 text-slate-500" /> Choose difficulty
             </h2>
             <div className="grid grid-cols-3 gap-4">
               {difficulties.map((d) => (
                 <button
                   key={d.level}
                   onClick={() => setDifficulty(d.level)}
-                  className={`p-4 rounded-2xl font-bold transition-all transform hover:scale-105 active:scale-95 border-2 ${
+                  className={`p-4 rounded-2xl font-medium transition border ${
                     difficulty === d.level
-                      ? "bg-purple-600 text-white border-purple-400 shadow-lg"
-                      : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                      ? "bg-violet-500 text-white border-violet-500"
+                      : "bg-white text-slate-700 border-violet-100 hover:bg-violet-50"
                   }`}
                 >
-                  <div className="text-3xl mb-2">{d.emoji}</div>
-                  <div className="capitalize">{d.level}</div>
-                  <div className="text-[10px] opacity-80 mt-1 font-medium">{d.description}</div>
+                  <div className="text-sm font-semibold">{d.label}</div>
+                  <div className="text-[10px] opacity-80 mt-1">{d.description}</div>
                 </button>
               ))}
             </div>
@@ -139,8 +145,9 @@ export default function AIDebate() {
 
           {/* Topic Selection */}
           <section>
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="bg-blue-100 p-2 rounded-lg text-blue-600 text-sm">Step 2</span> Choose Topic
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-600">2</span>
+              <FiTarget className="h-4 w-4 text-slate-500" /> Choose topic
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
               {suggestedTopics.map((t, idx) => (
@@ -150,10 +157,10 @@ export default function AIDebate() {
                     setTopic(t);
                     setTopicError("");
                   }}
-                  className={`p-4 rounded-xl text-left text-sm font-semibold transition-all border-2 ${
+                  className={`p-4 rounded-xl text-left text-sm font-medium transition border ${
                     topic === t
-                      ? "bg-blue-600 text-white border-blue-400 shadow-md"
-                      : "bg-gray-50 text-gray-700 border-gray-100 hover:border-blue-200"
+                      ? "bg-sky-500 text-white border-sky-500"
+                      : "bg-white text-slate-700 border-sky-100 hover:bg-sky-50"
                   }`}
                 >
                   {t}
@@ -162,7 +169,7 @@ export default function AIDebate() {
             </div>
 
             <div className="relative group">
-              <p className="text-sm text-gray-500 mb-2 font-bold ml-1 uppercase tracking-wider">Or Enter Your Own:</p>
+              <p className="text-xs text-slate-500 mb-2 ml-1 uppercase tracking-wider">Or enter your own</p>
               <input
                 type="text"
                 placeholder="Ex: Impact of space exploration..."
@@ -171,14 +178,14 @@ export default function AIDebate() {
                   setTopic(e.target.value);
                   setTopicError("");
                 }}
-                className={`w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl font-semibold focus:outline-none transition-all ${
+                className={`w-full px-5 py-4 bg-white border rounded-2xl font-medium focus:outline-none transition ${
                   topicError 
-                    ? "border-red-400 focus:border-red-500" 
-                    : "border-gray-200 focus:border-blue-500"
+                    ? "border-red-300 focus:ring-2 focus:ring-red-100" 
+                    : "border-sky-100 focus:ring-2 focus:ring-sky-100"
                 }`}
               />
               {topicError && (
-                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded-xl text-red-700 text-sm font-bold shadow-sm">
+                <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
                   {topicError}
                 </div>
               )}
@@ -190,31 +197,31 @@ export default function AIDebate() {
             <button
               onClick={handleStartDebate}
               disabled={loading || topicValidating || !topic.trim()}
-              className={`w-full py-5 rounded-2xl font-bold text-xl text-white transition-all transform hover:scale-[1.02] active:scale-95 shadow-xl flex items-center justify-center gap-3 ${
+              className={`w-full py-4 rounded-2xl font-medium text-white transition flex items-center justify-center gap-3 ${
                 loading || topicValidating || !topic.trim()
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-b-4 border-black/20"
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600"
               }`}
             >
               {topicValidating ? (
                 <>
-                  <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                  <FiLoader className="h-5 w-5 animate-spin" />
                   Analyzing Topic...
                 </>
               ) : loading ? (
                 <>
-                  <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                  <FiLoader className="h-5 w-5 animate-spin" />
                   Initializing...
                 </>
               ) : (
                 <>
-                  <span>Start AI Arena</span>
-                  <span className="text-2xl">⚡</span>
+                  <span>Start AI debate</span>
+                  <FiArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>
-            <p className="text-center text-gray-500 text-xs mt-4 font-semibold italic">
-              💪 Improve skills | 🧠 AI feedback | 🏆 Track progress
+            <p className="text-center text-slate-500 text-xs mt-4">
+              Practice, review, and improve in one flow.
             </p>
           </div>
         </div>

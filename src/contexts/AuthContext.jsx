@@ -17,6 +17,7 @@ const getBackendBaseUrl = () => {
 const syncUserWithBackend = async (userData) => {
   try {
     const API_URL = `${getBackendBaseUrl()}/users/login`;
+    console.log('[Auth] Syncing user to backend:', API_URL, userData.email);
     
     const response = await fetch(API_URL, {
       method: "POST",
@@ -31,15 +32,18 @@ const syncUserWithBackend = async (userData) => {
       }),
     });
 
-    if (response.ok) {
-      console.log("✅ User synced with backend!");
-      return true;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ Backend rejected login:", response.status, errorData);
+      return false;
     }
 
-    console.error("❌ Failed to sync user with Backend");
-    return false;
+    const result = await response.json();
+    console.log("✅ User synced with backend!", result.user);
+    return true;
   } catch (error) {
     console.error("❌ Network error while syncing user:", error.message);
+    console.error("Stack:", error.stack);
     return false;
   }
 };
@@ -64,30 +68,56 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (googleResponse) => {
     try {
+      if (!googleResponse || !googleResponse.credential) {
+        throw new Error('Invalid Google response: missing credential');
+      }
+
       const credential = googleResponse.credential;
       
-      // Decode JWT token (base64 decode the payload)
-      const base64Url = credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
+      // Validate token format
+      const parts = credential.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT token format');
+      }
       
-      const decodedToken = JSON.parse(jsonPayload);
+      // Decode JWT token (base64 decode the payload)
+      const base64Url = parts[1];
+      if (!base64Url) {
+        throw new Error('Invalid JWT token: missing payload');
+      }
+
+      let decodedToken;
+      try {
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        decodedToken = JSON.parse(jsonPayload);
+      } catch (decodeErr) {
+        console.error('[AuthContext] JWT decode error:', decodeErr);
+        throw new Error('Failed to decode Google token');
+      }
+
+      if (!decodedToken.sub || !decodedToken.email) {
+        throw new Error('Google token missing required fields (sub or email)');
+      }
       
       const userData = {
         id: decodedToken.sub,
-        name: decodedToken.name,
+        name: decodedToken.name || 'User',
         email: decodedToken.email,
         picture: decodedToken.picture,
         loginTime: new Date().toISOString()
       };
 
       // 👇 बैकएंड में यूजर डेटा भेजने के लिए
-      await syncUserWithBackend(userData);
+      const syncSuccess = await syncUserWithBackend(userData);
+      if (!syncSuccess) {
+        console.warn('[AuthContext] Backend sync failed, but continuing with local auth');
+      }
 
       // Store in localStorage
       localStorage.setItem('authUser', JSON.stringify(userData));
@@ -101,7 +131,7 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User logged in:', userData.name);
       return userData;
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('❌ Login error:', error.message);
       throw error;
     }
   };

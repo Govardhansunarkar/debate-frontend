@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import { useAuth } from "../contexts/AuthContext";
+import { FiClock, FiLoader, FiPlay, FiSearch, FiShuffle, FiTarget, FiUsers, FiXCircle } from "react-icons/fi";
 
 export default function RandomMatch() {
   const { user } = useAuth();
@@ -78,77 +79,85 @@ export default function RandomMatch() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
-        <h2 className="text-4xl font-bold mb-4">🎲 Random Match</h2>
-        <p className="text-gray-600 mb-6">
-          Get matched with random opponents for a debate
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl rounded-2xl border border-sky-100 bg-white/95 p-8 shadow-sm">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+            <FiShuffle className="h-5 w-5" />
+          </div>
+          <h2 className="text-3xl font-semibold text-slate-900 mb-3">Random match</h2>
+          <p className="text-slate-600">Get matched with random opponents for a debate.</p>
+        </div>
 
-        {/* Debate Type Selection */}
         {!loading && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
-            <p className="text-sm font-semibold text-gray-700 mb-3">🎯 Choose Debate Type:</p>
+          <div className="mb-6 rounded-xl border border-sky-100 bg-sky-50/70 p-4">
+            <p className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+              <FiTarget className="h-4 w-4" /> Choose debate type
+            </p>
             <div className="space-y-2">
               <button
                 onClick={() => setDebateType("regular")}
-                className={`w-full py-2 px-4 rounded-lg font-semibold transition ${
+                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
                   debateType === "regular"
-                    ? "bg-blue-500 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    ? "border-sky-500 bg-sky-500 text-white"
+                    : "border-sky-100 bg-white text-slate-700 hover:bg-sky-50"
                 }`}
               >
-                👥 1v1 Debate (You vs 1 Opponent)
+                <span className="flex items-center gap-2">
+                  <FiUsers className="h-4 w-4" /> 1v1 debate
+                </span>
               </button>
               <button
                 onClick={() => setDebateType("team")}
-                className={`w-full py-2 px-4 rounded-lg font-semibold transition ${
+                className={`w-full rounded-xl border px-4 py-3 text-left font-medium transition ${
                   debateType === "team"
-                    ? "bg-purple-500 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    ? "border-violet-500 bg-violet-500 text-white"
+                    : "border-violet-100 bg-white text-slate-700 hover:bg-violet-50"
                 }`}
               >
-                🎪 Team Debate (2v2 or 3v3)
+                <span className="flex items-center gap-2">
+                  <FiUsers className="h-4 w-4" /> Team debate
+                </span>
               </button>
             </div>
-            <p className="text-xs text-gray-600 mt-3">
-              {debateType === "regular" 
-                ? "⏱️ Wait ~30s for opponent, then 5-min debate" 
-                : "⏱️ Wait for 4-6 players, then divide into teams"}
+            <p className="mt-3 text-xs text-slate-500 flex items-center gap-2">
+              <FiClock className="h-3.5 w-3.5" />
+              {debateType === "regular"
+                ? "Wait for one opponent, then start the debate."
+                : "Wait for 4 to 6 players, then split into teams."}
             </p>
           </div>
         )}
 
-        {/* Display the randomly selected topic */}
         {selectedTopic && (
-          <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-600 mb-2">📌 <strong>Debate Topic:</strong></p>
-            <p className="text-lg font-bold text-blue-700">{selectedTopic}</p>
+          <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <p className="text-sm font-medium text-slate-500 mb-2">Debate topic</p>
+            <p className="text-lg font-semibold text-slate-900">{selectedTopic}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="space-y-6">
-            <div className="text-lg text-gray-700 font-semibold">
-              🔍 Searching for {debateType === "team" ? "team" : "opponent"}...
+          <div className="space-y-6 text-center">
+            <div className="text-base text-slate-700 font-medium flex items-center justify-center gap-2">
+              <FiSearch className="h-4 w-4" /> Searching for {debateType === "team" ? "team" : "opponent"}
             </div>
             <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500"></div>
+              <FiLoader className="h-12 w-12 animate-spin text-sky-600" />
             </div>
-            <div className="text-4xl font-bold text-blue-600">{waitTime}s</div>
-            <p className="text-sm text-gray-500">
-              {debateType === "team" 
-                ? "Waiting for 4+ players to form teams..." 
-                : "Average wait: ~30 seconds"}
+            <div className="text-4xl font-semibold text-slate-900">{waitTime}s</div>
+            <p className="text-sm text-slate-500">
+              {debateType === "team"
+                ? "Waiting for enough players to form teams."
+                : "Average wait is around 30 seconds."}
             </p>
             <button
               onClick={() => {
                 setLoading(false);
                 socket.emit("leave-queue");
               }}
-              className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-medium text-rose-700 hover:bg-rose-100 transition"
             >
-              Cancel
+              <FiXCircle className="h-4 w-4" /> Cancel
             </button>
           </div>
         ) : (
@@ -156,14 +165,14 @@ export default function RandomMatch() {
             <button
               onClick={handleJoinRandom}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-400 text-white py-4 px-6 rounded-lg font-bold text-lg transition transform hover:scale-105"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-4 font-medium text-white transition hover:from-sky-600 hover:to-indigo-600 disabled:from-slate-400 disabled:to-slate-400"
             >
-              🚀 Find Match
+              <FiPlay className="h-4 w-4" /> Find match
             </button>
-            <p className="mt-6 text-sm text-gray-500">
-              💡 Tip: {debateType === "team" 
-                ? "Teams will be randomly assigned to FOR 🟢 or AGAINST 🔴 positions. Each team member speaks in turn."
-                : "You'll debate this topic with another player. Each debate lasts 5 minutes with AI-powered feedback at the end."}
+            <p className="mt-5 text-sm text-slate-500 leading-relaxed">
+              {debateType === "team"
+                ? "Teams will be assigned automatically to one side of the debate."
+                : "You'll debate one opponent, then review feedback at the end."}
             </p>
           </>
         )}

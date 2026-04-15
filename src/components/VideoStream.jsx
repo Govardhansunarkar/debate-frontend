@@ -1,5 +1,6 @@
 import { JitsiMeeting } from '@jitsi/react-sdk';
 import { useRef, useEffect } from 'react';
+import { FiCpu } from 'react-icons/fi';
 
 export default function VideoStream({ debateId, userId, playerName, isAIDebate = false }) {
   const jitsiApiRef = useRef(null);
@@ -7,12 +8,17 @@ export default function VideoStream({ debateId, userId, playerName, isAIDebate =
   // If it's an AI debate, we don't need Jitsi (AI uses local speech recognition)
   if (isAIDebate) {
     return (
-      <div className="relative group rounded-xl overflow-hidden bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 border-2 border-purple-500/30 shadow-2xl flex flex-col items-center justify-center aspect-video w-full h-[500px]">
-        <div className="text-7xl mb-4 animate-pulse drop-shadow-2xl">🤖</div>
-        <h3 className="text-xl font-black text-white tracking-widest uppercase">AI Arena Pro</h3>
-        <div className="mt-4 flex items-center gap-2 bg-purple-500/20 px-4 py-2 rounded-full border border-purple-500/40">
-          <span className="w-2 h-2 bg-purple-400 rounded-full animate-ping"></span>
-          <span className="text-purple-200 text-xs font-bold uppercase tracking-tighter">Analyzing Argument</span>
+      <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-lg flex flex-col items-center justify-center aspect-video w-full h-[500px]">
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-800 text-sky-400">
+          <FiCpu className="h-10 w-10" />
+        </div>
+        <h3 className="text-lg font-semibold text-white">AI debate room</h3>
+        <p className="mt-2 text-sm text-slate-400 text-center max-w-xs">
+          Waiting for the AI speech and analysis flow to begin.
+        </p>
+        <div className="mt-5 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-4 py-2">
+          <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse"></span>
+          <span className="text-slate-300 text-xs font-medium uppercase tracking-wide">Ready to analyze</span>
         </div>
       </div>
     );

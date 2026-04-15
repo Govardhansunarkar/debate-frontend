@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { BarChart3, Zap, Award, TrendingUp, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { FaRegStar, FaStar } from "react-icons/fa6";
+import { FiAlertTriangle, FiArrowRight, FiAward, FiBarChart2, FiCheckCircle, FiHome, FiInfo, FiRefreshCw, FiTrendingUp, FiZap } from "react-icons/fi";
 
 export default function SimpleFeedback({ feedback, debateMetrics, topic, debateId }) {
   const navigate = useNavigate();
@@ -13,26 +14,30 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
   // Handle error state
   if (feedback?.success === false) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border-2 border-red-300">
+      <div className="min-h-screen bg-slate-50 p-4 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full border border-slate-200">
           <div className="text-center">
-            <div className="text-5xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold text-red-600 mb-3">Could Not Load Feedback</h2>
-            <p className="text-gray-700 mb-4">{feedback?.userMessage || feedback?.error || 'An error occurred while loading your feedback'}</p>
-            <div className="bg-red-50 border border-red-300 rounded p-3 mb-6 text-sm text-red-700">
-              {feedback?.isTimeout ? '⏱️ Request timed out' : '🔗 Network error'}
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <FiAlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 className="text-2xl font-semibold text-slate-900 mb-3">Could not load feedback</h2>
+            <p className="text-slate-600 mb-4">{feedback?.userMessage || feedback?.error || 'An error occurred while loading your feedback'}</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-6 text-sm text-slate-600">
+              {feedback?.isTimeout ? 'Request timed out' : 'Network error'}
             </div>
             <button
               onClick={() => window.location.reload()}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition"
+              className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-xl transition"
             >
-              🔄 Reload Page
+              <FiRefreshCw className="h-4 w-4" />
+              Reload page
             </button>
             <button
               onClick={() => navigate('/')}
-              className="w-full mt-3 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg transition"
+              className="w-full mt-3 inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium py-3 px-4 rounded-xl transition border border-slate-200"
             >
-              ← Go Home
+              <FiHome className="h-4 w-4" />
+              Go home
             </button>
           </div>
         </div>
@@ -45,24 +50,24 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
   const stars = Math.min(5, Math.round(overallRating / 2));
 
   // Determine performance level
-  let performanceLevel = "🟡 Good Start";
+  let performanceLevel = "Good Start";
   let performanceColor = "bg-yellow-50";
   let performanceBorder = "border-yellow-300";
 
   if (overallRating >= 8) {
-    performanceLevel = "🟢 Excellent!";
+    performanceLevel = "Excellent";
     performanceColor = "bg-green-50";
     performanceBorder = "border-green-300";
   } else if (overallRating >= 6) {
-    performanceLevel = "🟡 Good Job!";
+    performanceLevel = "Good Job";
     performanceColor = "bg-yellow-50";
     performanceBorder = "border-yellow-300";
   } else if (overallRating >= 4) {
-    performanceLevel = "🟠 Keep Trying";
+    performanceLevel = "Keep Trying";
     performanceColor = "bg-orange-50";
     performanceBorder = "border-orange-300";
   } else {
-    performanceLevel = "🔴 Keep Learning";
+    performanceLevel = "Keep Learning";
     performanceColor = "bg-red-50";
     performanceBorder = "border-red-300";
   }
@@ -71,17 +76,17 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
   const isGenuineLLM = feedback?.source === 'NVIDIA_LLM' || feedback?.isGenuineLLM !== false;
   const feedbackSource = feedback?.source || 'UNKNOWN';
   
-  let feedbackBadge = '✅ AI-Powered Analysis';
+  let feedbackBadge = 'AI-powered analysis';
   let feedbackBadgeColor = 'bg-green-100 border-green-300 text-green-700';
   
   if (feedbackSource === 'INTELLIGENT_FALLBACK') {
-    feedbackBadge = '✅ Personalized Feedback Analysis';
+    feedbackBadge = 'Personalized feedback analysis';
     feedbackBadgeColor = 'bg-blue-100 border-blue-300 text-blue-700';
   } else if (feedbackSource === 'NVIDIA_LLM') {
-    feedbackBadge = '✅ AI-Powered Analysis (LLM)';
+    feedbackBadge = 'AI-powered analysis (LLM)';
     feedbackBadgeColor = 'bg-green-100 border-green-300 text-green-700';
   } else if (feedbackSource === 'FALLBACK_TEMPLATE') {
-    feedbackBadge = '🔄 Template Feedback (Auto-generated)';
+    feedbackBadge = 'Template feedback (auto-generated)';
     feedbackBadgeColor = 'bg-orange-100 border-orange-300 text-orange-700';
   }
 
@@ -106,11 +111,11 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
-            🎓 Your Debate Performance
+          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-2">
+            Your debate performance
           </h1>
-          <p className="text-gray-600">
-            Here's how you did against the AI opponent
+          <p className="text-slate-600">
+            Here is how you did against the AI opponent.
           </p>
         </div>
 
@@ -120,25 +125,23 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
         >
           <div className="text-center">
             {/* Stars Rating */}
-            <div className="flex justify-center gap-2 mb-4">
+            <div className="flex justify-center gap-2 mb-4 text-amber-400">
               {[...Array(5)].map((_, i) => (
-                <span key={i} className="text-3xl">
-                  {i < stars ? "⭐" : "☆"}
-                </span>
+                i < stars ? <FaStar key={i} className="h-7 w-7" /> : <FaRegStar key={i} className="h-7 w-7 text-slate-300" />
               ))}
             </div>
 
             {/* Overall Score */}
             <div className="flex justify-center items-center gap-4 mb-4">
-              <div className="text-5xl font-bold text-indigo-600">
+              <div className="text-5xl font-semibold text-slate-900">
                 {overallRating}
               </div>
-              <div className="text-lg text-gray-600">/10</div>
+              <div className="text-lg text-slate-500">/10</div>
             </div>
 
             {/* Performance Level */}
-            <h2 className="text-2xl font-bold mb-2">{performanceLevel}</h2>
-            <p className="text-gray-700">
+            <h2 className="text-2xl font-semibold mb-2 text-slate-900">{performanceLevel}</h2>
+            <p className="text-slate-600">
               Topic: <span className="font-semibold">{topic}</span>
             </p>
           </div>
@@ -147,45 +150,45 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Speeches Card */}
-          <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-blue-500">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-blue-500" />
-              <p className="text-sm text-gray-600">Speeches</p>
+              <FiZap className="w-5 h-5 text-sky-600" />
+              <p className="text-sm text-slate-500">Speeches</p>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
+            <p className="text-2xl font-semibold text-slate-900">
               {debateMetrics?.totalSpeeches || 0}
             </p>
           </div>
 
           {/* Points Card */}
-          <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-green-500">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-2">
-              <Award className="w-5 h-5 text-green-500" />
-              <p className="text-sm text-gray-600">Total Points</p>
+              <FiAward className="w-5 h-5 text-emerald-600" />
+              <p className="text-sm text-slate-500">Total points</p>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
+            <p className="text-2xl font-semibold text-slate-900">
               {debateMetrics?.totalPoints || 0}
             </p>
           </div>
 
           {/* Duration Card */}
-          <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-purple-500">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="w-5 h-5 text-purple-500" />
-              <p className="text-sm text-gray-600">Speaking Time</p>
+              <FiBarChart2 className="w-5 h-5 text-violet-600" />
+              <p className="text-sm text-slate-500">Speaking time</p>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
+            <p className="text-2xl font-semibold text-slate-900">
               {debateMetrics?.totalDuration || 0}s
             </p>
           </div>
 
           {/* Avg Words */}
-          <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-orange-500">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-orange-500" />
-              <p className="text-sm text-gray-600">Avg Words</p>
+              <FiTrendingUp className="w-5 h-5 text-amber-600" />
+              <p className="text-sm text-slate-500">Avg words</p>
             </div>
-            <p className="text-2xl font-bold text-gray-800">
+            <p className="text-2xl font-semibold text-slate-900">
               {Math.round(debateMetrics?.averageWordCount || 0)}
             </p>
           </div>
@@ -193,68 +196,70 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
 
         {/* Tabs */}
         <div className="mb-6">
-          <div className="flex gap-2 bg-white rounded-lg p-2 shadow-md">
+          <div className="flex gap-2 bg-white rounded-2xl p-2 shadow-sm border border-slate-200 overflow-x-auto">
             <button
               onClick={() => setSelectedTab("overview")}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition whitespace-nowrap ${
                 selectedTab === "overview"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              📊 Detailed Feedback
+              Detailed feedback
             </button>
             <button
               onClick={() => setSelectedTab("strengths")}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition whitespace-nowrap ${
                 selectedTab === "strengths"
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              ✅ What You Did Well
+              What you did well
             </button>
             <button
               onClick={() => setSelectedTab("improve")}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition ${
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition whitespace-nowrap ${
                 selectedTab === "improve"
-                  ? "bg-orange-500 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              💡 How to Improve
+              How to improve
             </button>
           </div>
         </div>
 
         {/* Content - Detailed Feedback (Paragraphs) */}
         {selectedTab === "overview" && (
-          <div className="bg-white rounded-xl p-6 shadow-md mb-6 border-l-4 border-blue-500 space-y-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm mb-6 border border-slate-200 space-y-6">
             <div>
-              <h3 className="text-xl font-bold text-blue-700 mb-4 flex items-center gap-2">
-                <span className="text-2xl">✅</span> What You Did Well
+              <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <FiCheckCircle className="h-5 w-5 text-emerald-600" /> What you did well
               </h3>
-              <p className="text-gray-700 leading-relaxed text-base">
+              <p className="text-slate-600 leading-relaxed text-base">
                 {feedback.strengths_paragraph || (feedback.strengths && feedback.strengths[0]) || "Great participation in the debate!"}
               </p>
             </div>
 
-            <div className="border-t pt-6">
-              <h3 className="text-xl font-bold text-orange-700 mb-4 flex items-center gap-2">
-                <span className="text-2xl">💡</span> How to Improve
+            <div className="border-t border-slate-200 pt-6">
+              <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <FiInfo className="h-5 w-5 text-amber-600" /> How to improve
               </h3>
-              <p className="text-gray-700 leading-relaxed text-base">
+              <p className="text-slate-600 leading-relaxed text-base">
                 {feedback.improvement_paragraph || (feedback.weaknesses && feedback.weaknesses[0]) || "Focus on adding more examples to support your points."}
               </p>
             </div>
 
             {feedback.recommendations && feedback.recommendations.length > 0 && (
-              <div className="border-t pt-6 bg-indigo-50 rounded-lg p-4">
-                <h4 className="text-lg font-bold text-indigo-700 mb-3">🎯 Key Recommendations</h4>
+              <div className="border-t border-slate-200 pt-6 bg-slate-50 rounded-xl p-4">
+                <h4 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <FiArrowRight className="h-4 w-4 text-slate-500" /> Key recommendations
+                </h4>
                 <ul className="space-y-2">
                   {feedback.recommendations.slice(0, 3).map((rec, idx) => (
-                    <li key={idx} className="flex gap-3 text-gray-700">
-                      <span className="flex-shrink-0 text-indigo-600 font-bold">{idx + 1}.</span>
+                    <li key={idx} className="flex gap-3 text-slate-600">
+                      <span className="flex-shrink-0 text-slate-900 font-medium">{idx + 1}.</span>
                       <span>{rec}</span>
                     </li>
                   ))}
@@ -266,9 +271,9 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
 
         {/* Content - Strengths */}
         {selectedTab === "strengths" && (
-          <div className="bg-white rounded-xl p-6 shadow-md mb-6 border-l-4 border-green-500">
-            <h3 className="text-xl font-bold text-green-700 mb-4 flex items-center gap-2">
-              <span className="text-2xl">✅</span> What You Did Well
+          <div className="bg-white rounded-xl p-6 shadow-sm mb-6 border border-slate-200">
+            <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <FiCheckCircle className="h-5 w-5 text-emerald-600" /> What you did well
             </h3>
 
             {feedback.strengths && feedback.strengths.length > 0 ? (
@@ -276,24 +281,24 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
                 {feedback.strengths.slice(0, 4).map((strength, idx) => (
                   <li
                     key={idx}
-                    className="flex gap-3 p-3 bg-green-50 rounded-lg border border-green-200"
+                    className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200"
                   >
-                    <span className="text-2xl flex-shrink-0">👍</span>
-                    <span className="text-gray-700">{strength}</span>
+                    <FiCheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-600 mt-0.5" />
+                    <span className="text-slate-600">{strength}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 italic">No strengths data available</p>
+              <p className="text-slate-500 italic">No strengths data available</p>
             )}
           </div>
         )}
 
         {/* Content - Improvements */}
         {selectedTab === "improve" && (
-          <div className="bg-white rounded-xl p-6 shadow-md mb-6 border-l-4 border-orange-500">
-            <h3 className="text-xl font-bold text-orange-700 mb-4 flex items-center gap-2">
-              <span className="text-2xl">💡</span> How to Improve
+          <div className="bg-white rounded-xl p-6 shadow-sm mb-6 border border-slate-200">
+            <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <FiInfo className="h-5 w-5 text-amber-600" /> How to improve
             </h3>
 
             {feedback.improvements && feedback.improvements.length > 0 ? (
@@ -301,56 +306,59 @@ export default function SimpleFeedback({ feedback, debateMetrics, topic, debateI
                 {feedback.improvements.slice(0, 4).map((improvement, idx) => (
                   <li
                     key={idx}
-                    className="flex gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200"
+                    className="flex gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200"
                   >
-                    <span className="text-2xl flex-shrink-0">🚀</span>
-                    <span className="text-gray-700">{improvement}</span>
+                    <FiArrowRight className="h-5 w-5 flex-shrink-0 text-slate-500 mt-0.5" />
+                    <span className="text-slate-600">{improvement}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 italic">No improvement suggestions available</p>
+              <p className="text-slate-500 italic">No improvement suggestions available</p>
             )}
           </div>
         )}
 
         {/* Quick Tips */}
-        <div className="bg-indigo-50 rounded-xl p-6 mb-6 border-2 border-indigo-200">
-          <h3 className="text-lg font-bold text-indigo-700 mb-4">🎯 Quick Tips</h3>
-          <ul className="space-y-2 text-gray-700">
+        <div className="bg-slate-50 rounded-xl p-6 mb-6 border border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <FiBarChart2 className="h-4 w-4 text-slate-500" /> Quick tips
+          </h3>
+          <ul className="space-y-2 text-slate-600">
             <li className="flex gap-2">
-              <span>📌</span>
+              <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
               <span>Use specific examples and numbers in your arguments</span>
             </li>
             <li className="flex gap-2">
-              <span>📌</span>
+              <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
               <span>Address the AI's counterpoints directly</span>
             </li>
             <li className="flex gap-2">
-              <span>📌</span>
+              <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
               <span>Speak clearly and at a steady pace</span>
             </li>
             <li className="flex gap-2">
-              <span>📌</span>
+              <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
               <span>Practice debating on different topics</span>
             </li>
           </ul>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => navigate("/")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition flex items-center gap-2 shadow-md"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-medium text-white transition hover:bg-slate-800"
           >
-            <Home className="w-5 h-5" />
-            Back to Home
+            <FiHome className="w-4 h-4" />
+            Back to home
           </button>
           <button
             onClick={() => navigate("/ai-debate")}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Try Another Debate 🔄
+            <FiRefreshCw className="w-4 h-4" />
+            Try another debate
           </button>
         </div>
       </div>

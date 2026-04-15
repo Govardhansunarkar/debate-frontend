@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { FiAlertTriangle, FiMic, FiMicOff, FiRefreshCw, FiStopCircle, FiVolume2 } from "react-icons/fi";
 
 export default function SpeechRecognition({ debateId, onTranscript, isActive }) {
   console.log('[SpeechRecognition Component] Rendered - debateId:', debateId, 'isActive:', isActive);
@@ -201,42 +202,44 @@ export default function SpeechRecognition({ debateId, onTranscript, isActive }) 
   console.log('[SpeechRecognition Render] isActive:', isActive, 'component will render');
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-200">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          🎤 Live Speech Recognition
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+          <FiMic className="h-4 w-4 text-slate-500" /> Live speech recognition
           {isListening && (
             <span className="inline-flex items-center gap-1 ml-4">
               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-              <span className="text-sm text-red-600 font-semibold">Recording</span>
+              <span className="text-sm text-red-600 font-medium">Recording</span>
             </span>
           )}
         </h3>
       </div>
 
       {error && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded mb-4 text-sm">
-          ⚠️ {error}
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-xl mb-4 text-sm flex items-start gap-2">
+          <FiAlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {micPermissionDenied && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-4 text-sm">
-          🔒 Microphone access required: Please check your browser permissions and allow microphone access.
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl mb-4 text-sm flex items-start gap-2">
+          <FiMicOff className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>Microphone access required. Please check your browser permissions and allow microphone access.</span>
         </div>
       )}
 
       {/* Live Transcript Display */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-4 min-h-20 border-2 border-gray-200">
-        <div className="text-sm text-gray-600 mb-2">📝 Your Speech:</div>
-        <div className="text-gray-800 text-base leading-relaxed">
+      <div className="bg-slate-50 rounded-xl p-4 mb-4 min-h-20 border border-slate-200">
+        <div className="text-sm text-slate-500 mb-2 flex items-center gap-2"><FiVolume2 className="h-4 w-4" /> Your speech</div>
+        <div className="text-slate-800 text-base leading-relaxed">
           {transcript}
-          <span className="text-blue-500 italic">{interimTranscript}</span>
+          <span className="text-slate-500 italic">{interimTranscript}</span>
         </div>
       </div>
 
       {/* Word Count */}
-      <div className="text-sm text-gray-600 mb-4">
+      <div className="text-sm text-slate-500 mb-4">
         <span className="font-semibold">Words:</span> {transcript.split(" ").filter(w => w).length + interimTranscript.split(" ").filter(w => w).length}
       </div>
 
@@ -245,33 +248,33 @@ export default function SpeechRecognition({ debateId, onTranscript, isActive }) 
         <button
           onClick={startListening}
           disabled={isListening || !isActive}
-          className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-2 rounded-lg font-semibold transition"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white py-2 rounded-xl font-medium transition"
         >
-          🎤 Start Speaking
+          <FiMic className="h-4 w-4" /> Start speaking
         </button>
         <button
           onClick={stopListening}
           disabled={!isListening}
-          className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white py-2 rounded-lg font-semibold transition"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 disabled:bg-slate-100 text-slate-700 py-2 rounded-xl font-medium transition border border-slate-200"
         >
-          ⏹️ Stop Speaking
+          <FiStopCircle className="h-4 w-4" /> Stop speaking
         </button>
         <button
           onClick={resetTranscript}
-          className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-semibold transition"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 py-2 rounded-xl font-medium transition border border-slate-200"
         >
-          🔄 Clear
+          <FiRefreshCw className="h-4 w-4" /> Clear
         </button>
       </div>
 
       {!isActive && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-3 py-2 rounded mt-4 text-sm">
-          💡 Click "Start Debate" first to enable speech recognition
+        <div className="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-xl mt-4 text-sm">
+          Click "Start Debate" first to enable speech recognition.
         </div>
       )}
 
-      <p className="text-xs text-gray-500 mt-3">
-        💡 Tips: Speak clearly for better accuracy. Make sure microphone is enabled in browser settings. Try Chrome or Edge for best compatibility. Verify internet connection if you see network errors.
+      <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+        Tips: Speak clearly for better accuracy. Make sure microphone is enabled in browser settings. Try Chrome or Edge for best compatibility. Verify internet connection if you see network errors.
       </p>
     </div>
   );

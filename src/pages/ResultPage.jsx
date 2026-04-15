@@ -4,6 +4,7 @@ import { socket } from "../services/socket";
 import FeedbackReport from "../components/FeedbackReport";
 import SimpleFeedback from "../components/SimpleFeedback";
 import { getDebateFeedback, simplifyFeedback, generateQuickFeedback, generatePerUserFeedback } from "../services/debateAnalysis";
+import { FiAlertTriangle, FiArrowRight, FiAward, FiBarChart2, FiCheckCircle, FiHome, FiMessageSquare, FiRefreshCw, FiTrendingUp, FiUsers } from "react-icons/fi";
 
 export default function ResultPage() {
   const { debateId } = useParams();
@@ -175,99 +176,99 @@ export default function ResultPage() {
   )?.[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 p-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Winner Banner */}
-        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-center py-8 px-6 rounded-2xl mb-6 shadow-xl border-4 border-yellow-600">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-800">🏆 Debate Results</h1>
-          <p className="text-2xl md:text-3xl mt-4 text-gray-800">
-            Winner: <span className="font-bold text-yellow-700 bg-yellow-100 px-4 py-2 rounded-lg inline-block">{winner}</span>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-rose-50 p-4 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="rounded-2xl border border-sky-100 bg-white/95 p-6 shadow-sm text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 text-white">
+            <FiAward className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900">Debate results</h1>
+          <p className="mt-3 text-slate-600">
+            Winner: <span className="font-medium text-slate-900">{winner}</span>
           </p>
         </div>
 
-        {/* Scores */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Object.entries(playerScores).map(([player, score]) => (
-            <div
-              key={player}
-              className={`p-8 rounded-2xl text-white font-semibold text-center shadow-xl border-4 transform hover:scale-105 transition ${
-                player === winner ? "bg-gradient-to-br from-green-500 to-green-600 border-green-700" : "bg-gradient-to-br from-blue-500 to-blue-600 border-blue-700"
-              }`}
-            >
-              <div className="text-2xl md:text-3xl font-bold mb-2">{player === winner ? "🥇" : "🥈"} {player}</div>
-              <div className="text-5xl md:text-6xl font-bold mt-3">{score.toFixed(1)}</div>
-              <div className="text-base md:text-lg mt-3 opacity-90">points</div>
+            <div key={player} className={`rounded-2xl border p-6 shadow-sm ${player === winner ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-sky-100 bg-white/95 text-slate-900"}`}>
+              <div className="flex items-center gap-3 text-sm font-medium opacity-80 mb-4">
+                <FiAward className="h-4 w-4" />
+                {player}
+              </div>
+              <div className="text-5xl font-semibold">{score.toFixed(1)}</div>
+              <div className="mt-2 text-sm opacity-80">points</div>
             </div>
           ))}
         </div>
 
-        {/* Per-User Feedback for User-Only Debates */}
         {!isAIDebate && Object.keys(perUserFeedback).length > 0 && (
-          <div className="space-y-6 mb-8">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">📊 Individual Feedback</h2>
-            
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 inline-flex items-center gap-2">
+                <FiBarChart2 className="h-5 w-5 text-slate-500" /> Individual feedback
+              </h2>
+            </div>
+
             {Object.values(perUserFeedback).map((userFeedback, idx) => (
-              <div key={idx} className="bg-white rounded-2xl p-8 md:p-10 shadow-xl border-4 border-blue-200">
+              <div key={idx} className="rounded-2xl border border-sky-100 bg-white/95 p-6 shadow-sm">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white font-semibold text-lg">
                     {userFeedback.playerName?.[0] || "?"}
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-800">{userFeedback.playerName}</h3>
-                    <p className="text-lg font-semibold text-purple-600">Score: {userFeedback.analysis.overallScore}/100</p>
+                    <h3 className="text-xl font-semibold text-slate-900">{userFeedback.playerName}</h3>
+                    <p className="text-slate-600">Score: {userFeedback.analysis.overallScore}/100</p>
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{userFeedback.stats.turns}</p>
-                    <p className="text-xs text-gray-600">Turns</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4 text-center">
+                    <p className="text-2xl font-semibold text-slate-900">{userFeedback.stats.turns}</p>
+                    <p className="text-xs text-slate-500 mt-1">Turns</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-600">{userFeedback.stats.totalPoints}</p>
-                    <p className="text-xs text-gray-600">Points</p>
+                  <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-4 text-center">
+                    <p className="text-2xl font-semibold text-slate-900">{userFeedback.stats.totalPoints}</p>
+                    <p className="text-xs text-slate-500 mt-1">Points</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{userFeedback.stats.avgWordCount}</p>
-                    <p className="text-xs text-gray-600">Avg Words</p>
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-center">
+                    <p className="text-2xl font-semibold text-slate-900">{userFeedback.stats.avgWordCount}</p>
+                    <p className="text-xs text-slate-500 mt-1">Avg words</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-pink-600">{userFeedback.stats.avgQuality}</p>
-                    <p className="text-xs text-gray-600">Quality</p>
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-center">
+                    <p className="text-2xl font-semibold text-slate-900">{userFeedback.stats.avgQuality}</p>
+                    <p className="text-xs text-slate-500 mt-1">Quality</p>
                   </div>
                 </div>
 
-                {/* Feedback */}
-                <div className="space-y-4">
+                <div className="space-y-4 text-slate-600">
                   <div>
-                    <p className="font-bold text-gray-700 mb-2">💡 Summary</p>
-                    <p className="text-gray-600 italic">{userFeedback.analysis.summary}</p>
+                    <p className="font-medium text-slate-900 mb-2 inline-flex items-center gap-2"><FiMessageSquare className="h-4 w-4 text-slate-500" /> Summary</p>
+                    <p className="italic">{userFeedback.analysis.summary}</p>
                   </div>
 
                   <div>
-                    <p className="font-bold text-green-700 mb-2">✅ Strengths</p>
+                    <p className="font-medium text-slate-900 mb-2 inline-flex items-center gap-2"><FiCheckCircle className="h-4 w-4 text-emerald-600" /> Strengths</p>
                     <ul className="list-disc list-inside space-y-1">
                       {userFeedback.analysis.strengths.map((strength, i) => (
-                        <li key={i} className="text-green-700">{strength}</li>
+                        <li key={i}>{strength}</li>
                       ))}
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-bold text-orange-700 mb-2">⚠️ Areas for Improvement</p>
+                    <p className="font-medium text-slate-900 mb-2 inline-flex items-center gap-2"><FiAlertTriangle className="h-4 w-4 text-amber-600" /> Areas for improvement</p>
                     <ul className="list-disc list-inside space-y-1">
                       {userFeedback.analysis.weaknesses.map((weakness, i) => (
-                        <li key={i} className="text-orange-700">{weakness}</li>
+                        <li key={i}>{weakness}</li>
                       ))}
                     </ul>
                   </div>
 
                   <div>
-                    <p className="font-bold text-blue-700 mb-2">🎯 Next Steps</p>
+                    <p className="font-medium text-slate-900 mb-2 inline-flex items-center gap-2"><FiTrendingUp className="h-4 w-4 text-sky-600" /> Next steps</p>
                     <ul className="list-disc list-inside space-y-1">
                       {userFeedback.analysis.improvements.map((improvement, i) => (
-                        <li key={i} className="text-blue-700">{improvement}</li>
+                        <li key={i}>{improvement}</li>
                       ))}
                     </ul>
                   </div>
@@ -277,15 +278,14 @@ export default function ResultPage() {
           </div>
         )}
 
-        {/* AI Feedback Report (AI and Private Debates) */}
         {(isAIDebate || localStorage.getItem(`roomType_${debateId}`) === 'user-only') && (
-          <div className="bg-white rounded-2xl p-8 md:p-10 mb-8 shadow-xl border-4 border-purple-200">
-            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">🤖 AI-Powered Analysis</h2>
+          <div className="rounded-2xl border border-violet-100 bg-white/95 p-6 md:p-8 shadow-sm">
+            <h2 className="text-2xl md:text-3xl font-semibold text-slate-900 mb-6 inline-flex items-center gap-2"><FiMessageSquare className="h-5 w-5 text-slate-500" /> AI-powered analysis</h2>
             {fetchingFeedback ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
-                <p className="text-xl font-semibold text-purple-700 animate-pulse">🔄 Generating AI-Powered Analysis...</p>
-                <p className="text-gray-500 mt-2">NVIDIA Nemotron is analyzing your arguments (takes ~15-30s)</p>
+              <div className="flex flex-col items-center justify-center py-12 text-slate-600">
+                <div className="h-12 w-12 animate-spin rounded-full border-2 border-violet-200 border-t-violet-500 mb-4"></div>
+                <p className="font-medium">Generating AI analysis...</p>
+                <p className="text-sm text-slate-500 mt-2">This can take a few seconds.</p>
               </div>
             ) : feedback ? (
               <FeedbackReport 
@@ -294,48 +294,46 @@ export default function ResultPage() {
                 debateMetrics={debateMetrics}
               />
             ) : (
-              <div className="text-center py-8">
-                <p className="text-orange-600 font-semibold mb-2">⚠️ Analysis not loaded</p>
-                <p className="text-gray-600">Check if your backend is running and NVIDIA API keys are correct.</p>
+              <div className="text-center py-8 text-slate-600">
+                <p className="font-medium mb-2 inline-flex items-center gap-2"><FiAlertTriangle className="h-4 w-4 text-amber-600" /> Analysis not loaded</p>
+                <p className="text-sm">Check if your backend is running and the API keys are correct.</p>
                 <button 
                   onClick={() => window.location.reload()}
-                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-2 text-white hover:from-violet-600 hover:to-indigo-600 transition"
                 >
-                  Retry Analysis
+                  <FiRefreshCw className="h-4 w-4" /> Retry analysis
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Debate Messages */}
         {debate?.messages && (
-          <div className="bg-white rounded-lg p-6 mb-6 shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">💬 Debate Messages</h2>
+          <div className="rounded-2xl border border-sky-100 bg-white/95 p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4 inline-flex items-center gap-2"><FiMessageSquare className="h-4 w-4 text-slate-500" /> Debate messages</h2>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {debate.messages.map((msg, idx) => (
-                <div key={idx} className="border-l-4 border-gray-300 pl-4">
-                  <p className="font-semibold text-gray-800">{msg.player}:</p>
-                  <p className="text-gray-600">{msg.text}</p>
+                <div key={idx} className="border-l-2 border-slate-200 pl-4">
+                  <p className="font-medium text-slate-900">{msg.player}:</p>
+                  <p className="text-slate-600">{msg.text}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => navigate("/")}
-            className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 font-medium text-white transition hover:from-sky-600 hover:to-indigo-600"
           >
-            New Debate
+            <FiHome className="h-4 w-4" /> New debate
           </button>
           <button
             onClick={() => navigate(-1)}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Go Back
+            <FiArrowRight className="h-4 w-4 rotate-180" /> Go back
           </button>
         </div>
       </div>

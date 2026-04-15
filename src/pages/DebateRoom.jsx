@@ -6,6 +6,7 @@ import { socket } from "../services/socket";
 import { useAuth } from "../contexts/AuthContext";
 import VideoStream from "../components/VideoStream";
 import AdvancedSpeechRecognition from "../components/AdvancedSpeechRecognition";
+import { FiClock, FiCpu, FiFlag, FiLogOut, FiPlay, FiUsers } from "react-icons/fi";
 import { trackDebateMetrics } from "../services/debateAnalysis";
 
 export default function DebateRoom() {
@@ -136,6 +137,14 @@ export default function DebateRoom() {
     if (timer === 0 && isActive) handleEndDebate();
   }, [timer, isActive]);
 
+  useEffect(() => {
+    if (speeches.length === 0) {
+      setDebateMetrics(null);
+      return;
+    }
+    setDebateMetrics(trackDebateMetrics(speeches));
+  }, [speeches]);
+
   const handleStart = () => {
     setIsActive(true);
     setTimer(300);
@@ -146,17 +155,14 @@ export default function DebateRoom() {
 
   const handleTranscript = (transcriptData) => {
     if (!transcriptData || !transcriptData.text) return;
-    setSpeeches((prev) => {
-      const updated = [...prev, transcriptData];
-      const metrics = trackDebateMetrics(updated);
-      setDebateMetrics(metrics);
-      return updated;
-    });
+
+    setSpeeches((prev) => [...prev, transcriptData]);
+
     socket.emit("send-message", {
       debateId,
       userId: user?.id,
       playerName: user?.name,
-      text: `🎤 ${transcriptData.text}`,
+      text: `Speech: ${transcriptData.text}`,
     });
   };
 
@@ -200,59 +206,60 @@ export default function DebateRoom() {
   const seconds = timer % 60;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 md:p-6 font-sans text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-violet-50 p-4 md:p-6 font-sans text-gray-800">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white/90 backdrop-blur-xl border-4 border-white/30 p-6 rounded-3xl mb-6 shadow-2xl relative overflow-hidden">
+        <div className="bg-white/95 border border-sky-100 p-6 rounded-2xl mb-6 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${isAIDebate ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} mb-2 inline-block`}>
-                {isAIDebate ? '🤖 AI Debate Mode' : '👥 Multiplayer Match'}
+              <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-medium tracking-widest uppercase ${isAIDebate ? 'bg-violet-50 text-violet-600' : 'bg-sky-50 text-sky-600'} mb-2`}>
+                {isAIDebate ? <FiCpu className="h-3 w-3" /> : <FiUsers className="h-3 w-3" />}
+                {isAIDebate ? 'AI debate mode' : 'Multiplayer match'}
               </span>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-gray-800">{topic}</h1>
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">{topic}</h1>
             </div>
-            {isAIDebate && <div className="text-4xl">🤖</div>}
+            {isAIDebate && <div className="text-slate-500"><FiCpu className="h-8 w-8" /></div>}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border-2 border-white/50 flex flex-col items-center justify-center shadow-lg">
-                <span className="text-[10px] font-black text-gray-400 tracking-[3px] uppercase">Time Remaining</span>
-                <span className="text-4xl font-mono font-black text-blue-600">
+                <div className="bg-white/95 p-4 rounded-2xl border border-sky-100 flex flex-col items-center justify-center shadow-sm">
+                 <span className="text-[10px] font-medium text-slate-500 tracking-[3px] uppercase inline-flex items-center gap-2"><FiClock className="h-3 w-3" /> Time remaining</span>
+                 <span className="text-4xl font-mono font-semibold text-slate-900">
                   {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
                 </span>
               </div>
               
               {isTeamDebate && (
-                <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border-2 border-white/50 flex items-center justify-around shadow-lg">
+                <div className="bg-white/95 p-4 rounded-2xl border border-violet-100 flex items-center justify-around shadow-sm">
                    <div className="text-center">
-                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Team For</p>
-                      <p className="text-lg font-black text-gray-800">{teamFor.length}</p>
+                     <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Team for</p>
+                     <p className="text-lg font-semibold text-slate-900">{teamFor.length}</p>
                    </div>
-                   <div className="h-8 w-px bg-gray-200"></div>
+                   <div className="h-8 w-px bg-slate-200"></div>
                    <div className="text-center">
-                      <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Team Against</p>
-                      <p className="text-lg font-black text-gray-800">{teamAgainst.length}</p>
+                     <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Team against</p>
+                     <p className="text-lg font-semibold text-slate-900">{teamAgainst.length}</p>
                    </div>
                 </div>
               )}
             </div>
 
-            <div className={`bg-gray-100 rounded-3xl border-8 border-white shadow-2xl relative overflow-hidden ${isAIDebate ? 'min-h-[500px]' : 'h-[600px]'}`}>
+            <div className={`bg-white/80 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden ${isAIDebate ? 'min-h-[500px]' : 'h-[600px]'}`}>
               {/* Mandatory Start Overlay for ALL room types when not active */}
               {!isActive && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
                    <div className="mb-8">
-                     <p className="text-sm font-black text-blue-600 tracking-[8px] uppercase mb-2">Awaiting Session</p>
-                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">System ready for debate sequence</p>
+                     <p className="text-sm font-medium text-slate-700 tracking-[8px] uppercase mb-2">Awaiting session</p>
+                     <p className="text-[10px] text-slate-500 uppercase font-medium tracking-widest">System ready for debate sequence</p>
                    </div>
                    <button
                      onClick={handleStart}
-                     className="px-16 py-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-3xl font-black text-3xl shadow-2xl transition-all hover:scale-105 active:scale-95 border-b-8 border-black/20 flex flex-col items-center gap-1 group"
+                     className="px-10 py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-medium text-lg shadow-sm transition-all hover:scale-[1.01] active:scale-95 flex flex-col items-center gap-1 group"
                    >
-                     <span>START DEBATE ⚡</span>
-                     <span className="text-[10px] opacity-70 group-hover:opacity-100 tracking-[3px]">CLICK TO BEGIN</span>
+                     <span className="inline-flex items-center gap-2"><FiPlay className="h-4 w-4" /> Start debate</span>
+                     <span className="text-[10px] opacity-70 group-hover:opacity-100 tracking-[3px]">Click to begin</span>
                    </button>
                 </div>
               )}
@@ -267,19 +274,19 @@ export default function DebateRoom() {
                   onSpeechEnd={handleTranscript}
                 />
               ) : (
-                <div className="h-full relative bg-gray-50/50">
+                <div className="h-full relative bg-white/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 h-full">
                     {players.map((player) => (
-                      <div key={player.userId} className="relative rounded-2xl overflow-hidden border-4 border-white group bg-white shadow-md">
+                      <div key={player.userId} className="relative rounded-2xl overflow-hidden border border-slate-200 group bg-white shadow-sm">
                         <VideoStream player={player} isMe={player.userId === user?.id} />
-                        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg border border-gray-100 shadow-lg group-hover:opacity-100 transition-opacity">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-800">{player.playerName}</p>
+                        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-lg border border-slate-200 shadow-sm group-hover:opacity-100 transition-opacity">
+                          <p className="text-[10px] font-medium uppercase tracking-widest text-slate-800">{player.playerName}</p>
                         </div>
                       </div>
                     ))}
                     {players.length === 1 && (
-                      <div className="border-4 border-dashed border-gray-200 rounded-2xl flex items-center justify-center text-gray-400 bg-white/50">
-                        <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Waiting for challenger...</span>
+                      <div className="border border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 bg-white/50">
+                        <span className="text-[10px] font-medium uppercase tracking-widest animate-pulse">Waiting for challenger...</span>
                       </div>
                     )}
                   </div>
@@ -289,57 +296,57 @@ export default function DebateRoom() {
 
             <div className="flex gap-4 mt-6 justify-center flex-wrap">
               {isActive && (
-                <button onClick={handleEndDebate} className="px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-xs tracking-widest uppercase shadow-lg transition-all">
-                  🛑 End Session
+                <button onClick={handleEndDebate} className="px-8 py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-xl font-medium text-xs tracking-widest uppercase shadow-sm transition-all inline-flex items-center gap-2">
+                  <FiFlag className="h-4 w-4" /> End Session
                 </button>
               )}
               {!isAIDebate && (
-                <button onClick={handleRaiseHand} className={`px-8 py-3 rounded-xl font-black text-xs tracking-widest uppercase italic border-2 transition-all ${handRaised ? 'bg-orange-500 text-white border-orange-400 shadow-lg' : 'bg-white text-gray-600 border-gray-100 shadow-md'}`}>
-                  {handRaised ? '✋ Lower Hand' : '🙋 Raise Hand'}
+                <button onClick={handleRaiseHand} className={`px-8 py-3 rounded-xl font-medium text-xs tracking-widest uppercase border transition-all ${handRaised ? 'bg-amber-500 text-white border-amber-400 shadow-sm' : 'bg-white text-slate-600 border-amber-100 shadow-sm hover:bg-amber-50'}`}>
+                  {handRaised ? 'Lower Hand' : 'Raise Hand'}
                 </button>
               )}
-              <button onClick={handleLeaveDebate} className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-black text-xs tracking-widest uppercase italic shadow-md transition-all">
-                🚪 Exit
+              <button onClick={handleLeaveDebate} className="px-8 py-3 bg-white hover:bg-rose-50 text-slate-700 rounded-xl font-medium text-xs tracking-widest uppercase shadow-sm border border-rose-100 transition-all inline-flex items-center gap-2">
+                <FiLogOut className="h-4 w-4" /> Exit
               </button>
             </div>
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 border-4 border-white shadow-2xl h-full sticky top-6">
-              <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-gray-100">
-                <h3 className="text-xs font-black tracking-[3px] uppercase text-gray-400">The Roster</h3>
+            <div className="bg-white/95 rounded-3xl p-6 border border-sky-100 shadow-sm h-full sticky top-6">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <h3 className="text-xs font-medium tracking-[3px] uppercase text-slate-500">The roster</h3>
                 <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-orange-400'}`}></div>
               </div>
               
               <div className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100 shadow-sm">
+                <div className="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 shadow-sm">
                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white uppercase">{user?.name?.[0]?.toUpperCase() || 'Y'}</div>
+                      <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center font-semibold text-white uppercase">{user?.name?.[0]?.toUpperCase() || 'Y'}</div>
                       <div>
-                        <p className="text-xs font-black text-gray-800">{user?.name || 'You'}</p>
-                        <p className="text-[8px] text-blue-600 font-bold uppercase tracking-widest">Arena Prime</p>
+                        <p className="text-xs font-medium text-slate-900">{user?.name || 'You'}</p>
+                        <p className="text-[8px] text-slate-500 font-medium uppercase tracking-widest">Arena prime</p>
                       </div>
                    </div>
                 </div>
 
                 {isAIDebate ? (
-                  <div className="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100 shadow-sm">
+                  <div className="bg-violet-50/60 p-4 rounded-2xl border border-violet-100 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-xl">🤖</div>
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white"><FiCpu className="h-4 w-4" /></div>
                         <div>
-                          <p className="text-xs font-black text-gray-800">SKILLFORCE AI</p>
-                          <p className="text-[8px] text-purple-400 font-bold uppercase tracking-widest">Antagonist</p>
+                          <p className="text-xs font-medium text-slate-900">SkillForce AI</p>
+                          <p className="text-[8px] text-slate-500 font-medium uppercase tracking-widest">Opponent</p>
                         </div>
                     </div>
                   </div>
                 ) : (
                   players.filter(p => p.userId !== user?.id).map((p, i) => (
-                    <div key={i} className="bg-gray-50 p-4 rounded-2xl border-2 border-gray-100 shadow-sm">
+                    <div key={i} className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 shadow-sm">
                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white uppercase">{p.playerName?.[0]?.toUpperCase() || 'P'}</div>
+                          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center font-semibold text-white uppercase">{p.playerName?.[0]?.toUpperCase() || 'P'}</div>
                           <div>
-                            <p className="text-xs font-black text-gray-800">{p.playerName}</p>
-                            <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest">Challenger</p>
+                            <p className="text-xs font-medium text-slate-900">{p.playerName}</p>
+                            <p className="text-[8px] text-slate-500 font-medium uppercase tracking-widest">Challenger</p>
                           </div>
                        </div>
                     </div>

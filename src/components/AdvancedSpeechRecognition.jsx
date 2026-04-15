@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getAIResponse, speakText, stopSpeech, calculateDebatePoints } from "../services/aiDebateService";
-import { Mic, MicOff, Volume2 } from "lucide-react";
+import { FiCpu, FiMic, FiMicOff, FiVolume2 } from "react-icons/fi";
 
 const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, socket, roomType = 'user-only' }) => {
   const [isListening, setIsListening] = useState(false);
@@ -227,29 +227,28 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
           duration: speechDuration,
           transcriptSource: usedInterimFallback ? "interim-fallback" : "final"
         };
-        
-        // Use functional state update with immediate execution to ensure turn count is always current
+
+        let updatedHistory = [];
         setDebateHistory(prev => {
-          const updatedHistory = [...prev, newHistoryItem];
-          setUserPoints(pts => pts + points);
-          
+          updatedHistory = [...prev, newHistoryItem];
+          return updatedHistory;
+        });
+        setUserPoints(pts => pts + points);
+
+        // Defer parent updates so we don't trigger parent setState during child render.
+        setTimeout(() => {
           console.log("[SpeechRecognition] Calling parent callback onSpeechEnd");
           if (onSpeechEnd) onSpeechEnd(newHistoryItem);
 
           // Only get AI response if this is an AI debate room AND debate is still active
           if (roomType === 'ai' && isActive) {
             console.log("[SpeechRecognition] AI Debate: Immediately handling AI sequence...");
-            // Use setTimeout to avoid potential state update conflicts
-            setTimeout(() => {
-              handleAIResponse(userSpeech, updatedHistory, {
-                speechDuration,
-                transcriptSource: usedInterimFallback ? "interim-fallback" : "final"
-              });
-            }, 100);
+            handleAIResponse(userSpeech, updatedHistory, {
+              speechDuration,
+              transcriptSource: usedInterimFallback ? "interim-fallback" : "final"
+            });
           }
-          
-          return updatedHistory;
-        });
+        }, 0);
 
         // Reset for next turn
         finalTranscriptRef.current = "";
@@ -471,7 +470,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
   return (
     <div className={`flex flex-col h-full w-full bg-slate-950 text-slate-100 rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-900 font-sans relative ${!isActive ? 'opacity-50 grayscale scale-[0.98]' : ''} transition-all duration-700`}>
       
-      {/* 🤖 MAIN ANIMATION AREA - Ultra Compact Size */}
+      {/* Main animation area */}
       <div className="relative flex flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-900 to-slate-950 overflow-hidden min-h-[200px]">
         
         {/* Start Overlay - Only if in AI mode but not started */}
@@ -502,16 +501,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
               </div>
             )}
             
-            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" 
-                 className={`transition-all duration-500 ${isAISpeaking ? 'text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'text-slate-600'}`}>
-              <path d="M12 8V4H8" />
-              <rect width="18" height="14" x="3" y="7" rx="2" />
-              <path d="M2 13h1" />
-              <path d="M21 13h1" />
-              <path d="M15 12v2" />
-              <path d="M9 12v2" />
-              <path d="M8 18h8" />
-            </svg>
+            <FiCpu className={`h-8 w-8 transition-all duration-500 ${isAISpeaking ? 'text-purple-400' : 'text-slate-600'}`} />
           </div>
           
           <div className="text-center space-y-1">
@@ -591,9 +581,9 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
             `}
           >
             {isListening ? (
-              <><MicOff size={18} /> FINISH</>
+              <><FiMicOff size={18} /> FINISH</>
             ) : (
-              <><Mic size={18} /> SPEAK</>
+              <><FiMic size={18} /> SPEAK</>
             )}
           </button>
           
@@ -602,7 +592,7 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
               onClick={handleStopAISpeech}
               className="px-4 h-[48px] bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-xl font-black border border-purple-500/20 transition-all shadow-xl flex items-center justify-center"
             >
-              <Volume2 size={20} />
+              <FiVolume2 size={20} />
             </button>
           )}
         </div>

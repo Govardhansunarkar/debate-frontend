@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createRoom, joinRoom, validateTopic } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { FiArrowRight, FiCheckCircle, FiClock, FiInfo, FiLogIn, FiShield, FiUsers, FiVideo } from "react-icons/fi";
 
 export default function PrivateRoom() {
   const navigate = useNavigate();
@@ -102,30 +103,33 @@ export default function PrivateRoom() {
   // Show room created success screen
   if (roomCreated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
-          <h2 className="text-3xl font-bold mb-6">🎉 Room Created!</h2>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-emerald-100 bg-white/95 p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <FiCheckCircle className="h-6 w-6" />
+          </div>
+          <h2 className="text-2xl font-semibold text-slate-900 mb-5">Room created</h2>
 
-          <div className="bg-blue-50 p-6 rounded-lg mb-6">
-            <p className="text-gray-600 mb-3">Share this code with your friend:</p>
-            <p className="text-5xl font-bold text-blue-600 tracking-widest font-mono">{roomCode}</p>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-6 mb-6">
+            <p className="text-slate-500 mb-3">Share this code with your friend</p>
+            <p className="text-4xl font-semibold tracking-[0.35em] text-slate-900 font-mono">{roomCode}</p>
           </div>
 
-          <p className="text-gray-700 mb-6">
-            <span className="text-sm text-gray-600">Topic: </span>
-            <span className="font-semibold text-lg">{createTopic}</span>
+          <p className="text-slate-600 mb-6">
+            <span className="text-sm text-slate-500">Topic: </span>
+            <span className="font-medium text-slate-900">{createTopic}</span>
           </p>
 
           <button
             onClick={handleStartDebate}
-            className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold mb-3 transition"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 font-medium text-white transition hover:from-emerald-600 hover:to-teal-600 mb-3"
           >
-            Start Debate 🎬
+            <FiArrowRight className="h-4 w-4" /> Start debate
           </button>
 
           <button
             onClick={handleResetCreate}
-            className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition"
+            className="w-full rounded-xl border border-slate-200 bg-white py-3 font-medium text-slate-700 transition hover:bg-slate-50"
           >
             Create Another Room
           </button>
@@ -135,118 +139,125 @@ export default function PrivateRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-white mb-2">🏛️ Private Rooms</h1>
-          <p className="text-white/80 text-lg">Create a room or join one with a code</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+            <FiShield className="h-5 w-5" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 mb-2">Private rooms</h1>
+          <p className="text-slate-600 text-lg">Create a room or join one with a code.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Section 1: Create Debate Room */}
-          <div className="bg-white rounded-lg shadow-2xl p-8">
+          <div className="bg-white/95 rounded-2xl border border-sky-100 p-8 shadow-sm">
             <div className="flex items-center mb-6">
-              <div className="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold mr-3">
+              <div className="bg-gradient-to-br from-sky-500 to-indigo-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-semibold mr-3">
                 1
               </div>
-              <h2 className="text-3xl font-bold">Create Room</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Create room</h2>
             </div>
 
-            <p className="text-gray-600 mb-6">Set up a new debate room and invite members with a code</p>
+            <p className="text-slate-600 mb-6">Set up a new room and invite members with a code.</p>
 
             <div className="mb-6">
-              <label className="block text-gray-700 font-semibold mb-2">Debate Topic</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Debate topic</label>
               <input
                 type="text"
                 placeholder="e.g., Should we have a 4-day work week?"
                 value={createTopic}
                 onChange={(e) => {
                   setCreateTopic(e.target.value);
-                  setTopicError("");  // Clear error when user types
+                  setTopicError("");
                 }}
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateRoom()}
-                className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
-                  topicError ? "border-red-500 bg-red-50" : "border-gray-300"
+                className={`w-full rounded-xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-300 transition ${
+                  topicError ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"
                 }`}
               />
               {topicError && (
-                <div className="mt-3 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="text-red-700 text-sm whitespace-pre-wrap">{topicError}</p>
                 </div>
               )}
             </div>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
-              <p className="text-sm text-gray-700">
-                💡 <strong>Tip:</strong> Choose an interesting topic with multiple perspectives for you and your members to debate about!
+            <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-4 mb-6">
+              <p className="text-sm text-slate-600 flex items-start gap-2">
+                <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span><strong className="text-slate-800">Tip:</strong> Choose a topic with multiple perspectives so the debate stays productive.</span>
               </p>
             </div>
 
             <button
               onClick={handleCreateRoom}
               disabled={createLoading || topicValidating || !createTopic.trim()}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition text-lg"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 py-3 font-medium text-white transition hover:from-sky-600 hover:to-indigo-600 disabled:from-slate-400 disabled:to-slate-400"
             >
-              {topicValidating ? "✓ Validating topic..." : createLoading ? "Creating..." : "Create Room 🚀"}
+              {topicValidating ? "Validating topic..." : createLoading ? "Creating..." : "Create room"}
             </button>
           </div>
 
-          {/* Section 2: Join Debate Room */}
-          <div className="bg-white rounded-lg shadow-2xl p-8">
+          <div className="bg-white/95 rounded-2xl border border-emerald-100 p-8 shadow-sm">
             <div className="flex items-center mb-6">
-              <div className="bg-green-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold mr-3">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-semibold mr-3">
                 2
               </div>
-              <h2 className="text-3xl font-bold">Join Room</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Join room</h2>
             </div>
 
-            <p className="text-gray-600 mb-6">Join an existing debate room using a code from a friend</p>
+            <p className="text-slate-600 mb-6">Join an existing room using a code from a friend.</p>
 
             <div className="mb-6">
-              <label className="block text-gray-700 font-semibold mb-2">Room Code</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Room code</label>
               <input
                 type="text"
                 placeholder="Enter room code..."
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 onKeyPress={(e) => e.key === 'Enter' && handleJoinRoom()}
-                className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest font-mono font-bold"
+                className="w-full rounded-xl border border-slate-200 px-4 py-4 text-center text-2xl tracking-widest font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-slate-300"
               />
             </div>
 
-            <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded mb-6">
-              <p className="text-sm text-gray-700">
-                💡 <strong>Tip:</strong> Ask your friend for the 4-letter room code to join their debate!
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 mb-6">
+              <p className="text-sm text-slate-600 flex items-start gap-2">
+                <FiInfo className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span><strong className="text-slate-800">Tip:</strong> Ask your friend for the room code before joining.</span>
               </p>
             </div>
 
             <button
               onClick={handleJoinRoom}
               disabled={joinLoading || !joinCode.trim()}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition text-lg"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 font-medium text-white transition hover:from-emerald-600 hover:to-teal-600 disabled:from-slate-400 disabled:to-slate-400"
             >
-              {joinLoading ? "Joining..." : "Join Room 🎯"}
+              <FiLogIn className="h-4 w-4" /> {joinLoading ? "Joining..." : "Join room"}
             </button>
           </div>
         </div>
 
-        {/* Features Section */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/10 backdrop-blur p-6 rounded-lg text-white text-center">
-            <div className="text-4xl mb-3">👥</div>
-            <h3 className="font-bold mb-2">Multiple Members</h3>
-            <p className="text-white/80 text-sm">Invite as many friends as you want to debate</p>
+          <div className="rounded-2xl border border-sky-100 bg-white/95 p-6 shadow-sm text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+              <FiUsers className="h-4 w-4" />
+            </div>
+            <h3 className="font-semibold text-slate-900 mb-2">Multiple members</h3>
+            <p className="text-slate-500 text-sm">Invite as many friends as you want to debate.</p>
           </div>
-          <div className="bg-white/10 backdrop-blur p-6 rounded-lg text-white text-center">
-            <div className="text-4xl mb-3">🎥</div>
-            <h3 className="font-bold mb-2">Video & Audio</h3>
-            <p className="text-white/80 text-sm">See faces and hear voices of all participants</p>
+          <div className="rounded-2xl border border-emerald-100 bg-white/95 p-6 shadow-sm text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <FiVideo className="h-4 w-4" />
+            </div>
+            <h3 className="font-semibold text-slate-900 mb-2">Video and audio</h3>
+            <p className="text-slate-500 text-sm">See and hear every participant clearly.</p>
           </div>
-          <div className="bg-white/10 backdrop-blur p-6 rounded-lg text-white text-center">
-            <div className="text-4xl mb-3">⏱️</div>
-            <h3 className="font-bold mb-2">5 Min Debate</h3>
-            <p className="text-white/80 text-sm">Structured debate sessions with automatic timing</p>
+          <div className="rounded-2xl border border-violet-100 bg-white/95 p-6 shadow-sm text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-violet-50 text-violet-600">
+              <FiClock className="h-4 w-4" />
+            </div>
+            <h3 className="font-semibold text-slate-900 mb-2">Timed sessions</h3>
+            <p className="text-slate-500 text-sm">Structured debates with automatic timing.</p>
           </div>
         </div>
       </div>
