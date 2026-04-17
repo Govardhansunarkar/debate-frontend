@@ -327,8 +327,8 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
       console.log("[SpeechRecognition] Submitting to API:", userSpeech);
       const response = await getAIResponse(userSpeech, topic, currentDebateHistory, speechMeta);
 
-      if (response.success) {
-        const aiText = response.response || "I disagree with that point.";
+      if (response.success && response.response && String(response.response).trim().length > 0) {
+        const aiText = String(response.response).trim();
         setAiResponse(aiText);
 
         const aiWordCount = aiText.split(" ").filter(w => w).length;
@@ -368,11 +368,11 @@ const AdvancedSpeechRecognition = ({ isActive, debateId, topic, onSpeechEnd, soc
           });
         }, 100);
       } else {
-        throw new Error("Failed to get response");
+        throw new Error(response?.error || response?.details || "LLM response unavailable");
       }
     } catch (error) {
       console.error("[SpeechRecognition] AI Error:", error);
-      setSubmissionError("AI response failed. Please try speaking again.");
+      setSubmissionError(`AI response failed: ${error.message}`);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
       setIsAISpeaking(false);

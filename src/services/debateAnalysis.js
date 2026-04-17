@@ -44,48 +44,15 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
 
     console.log('[getDebateFeedback] 📝 Formatted speeches:', formattedSpeeches.length);
 
-    // Call the AI analysis endpoint with a tight timeout for immediate results
-    let response;
-    
-    try {
-      console.log(`[getDebateFeedback] 📡 Calling AI analysis API (Speed Optimized - 20s timeout)...`);
-      response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
-        speeches: formattedSpeeches,
-        topic: topic,
-      }, {
-        timeout: 20000  // ⚡ Reduced from 65s to 20s - backend has 15s API timeout
-      });
-      
-      console.log('[getDebateFeedback] ✅ Response received successfully');
-    } catch (error) {
-      console.warn(`[getDebateFeedback] ⚠️ Primary analysis timed out or failed:`, error.message);
-      
-      // ⚡ Use immediate fallback instead of retrying
-      if (error.code === 'ECONNABORTED' || error.message.includes('timeout') || error.code === 'ECONNREFUSED') {
-        console.log('[getDebateFeedback] ⚡ Using immediate fallback for faster UX...');
-        
-        const fallbackAnalysis = {
-          overall_score: 7,
-          summary: "Solid debate performance with clear arguments.",
-          strengths: ["Good articulation", "Stayed on topic"],
-          weaknesses: ["Could use more examples", "Could strengthen rebuttals"],
-          key_points: ["Main arguments were logical"],
-          recommendations: ["Add supporting data", "Practice response timing"]
-        };
-        
-        return {
-          success: true,
-          openai: {
-            analysis: fallbackAnalysis,
-            source: "FAST_FALLBACK",
-            isGenuineLLM: false
-          },
-          gemini: null,
-          timestamp: new Date(),
-        };
-      }
-      throw error; 
-    }
+    console.log(`[getDebateFeedback] 📡 Calling AI analysis API (LLM only)...`);
+    const response = await axios.post(`${currentAPI_URL}/debates/analyze-openai`, {
+      speeches: formattedSpeeches,
+      topic: topic,
+    }, {
+      timeout: 25000
+    });
+
+    console.log('[getDebateFeedback] ✅ Response received successfully');
 
     console.log('[getDebateFeedback] ✅ Response received:', {
       success: response.data?.success,
@@ -136,9 +103,7 @@ export const getDebateFeedback = async (debateId, topic, speeches) => {
       error: error.message,
       isTimeout: error.code === 'ECONNABORTED',
       statusCode: error.response?.status,
-      userMessage: error.code === 'ECONNABORTED' 
-        ? 'Feedback is taking longer than expected. Please try again.'
-        : 'Unable to load feedback. Please refresh and try again.'
+      userMessage: error.response?.data?.error || 'Unable to load LLM feedback. Please check the backend and try again.'
     };
   }
 };
@@ -273,40 +238,6 @@ export const generatePerUserFeedback = (speeches, allPlayers = []) => {
   return userFeedback;
 };
 
-// ⚡ Quick fallback feedback generator - provides instant feedback if API is slow
-export const generateQuickFeedback = (speeches) => {
-  // Generate basic feedback instantly without waiting for NVIDIA API
-  const metrics = trackDebateMetrics(speeches);
-  
-  const strengths = [];
-  const weaknesses = [];
-  const improvements = [];
-
-  // Analyze speech patterns
-  speeches.forEach((speech, idx) => {
-    if (speech?.points > 50) strengths.push(`Strong argument in turn ${idx + 1}`);
-    if (speech?.wordCount > 150) strengths.push(`Good elaboration with ${speech.wordCount} words`);
-    if (speech?.wordCount < 20) weaknesses.push(`Turn ${idx + 1} was too brief`);
-    if (speech?.duration < 3) improvements.push(`Speak longer to build stronger arguments`);
-  });
-
-  return {
-    success: true,
-    openai: {
-      analysis: {
-        summary: `Great job! You delivered ${metrics.totalSpeeches} speeches with ${metrics.totalPoints} total points.`,
-        strengths: strengths.length > 0 ? strengths : ["Participated in debate"],
-        weaknesses: weaknesses.length > 0 ? weaknesses : ["None noticed"],
-        improvements: improvements.length > 0 ? improvements : ["Keep practicing!"],
-        overallScore: Math.min(95, Math.round((metrics.totalPoints / metrics.totalSpeeches) * 2))
-      },
-      source: "QUICK_FALLBACK",
-      isGenuineLLM: false,
-      warning: "Quick feedback generated - AI analysis still loading in background"
-    }
-  };
-};
-
 // Prepare debate transcript
 export const prepareDebateTranscript = (playerName, speeches) => {
   if (!speeches || !Array.isArray(speeches)) {
@@ -328,114 +259,53 @@ export const prepareDebateTranscript = (playerName, speeches) => {
 export const simplifyFeedback = (complexFeedback, speeches = []) => {
   try {
     const analysis = complexFeedback?.openai?.analysis;
-    const source = complexFeedback?.openai?.source;
-    const isGenuineLLM = complexFeedback?.openai?.isGenuineLLM;
-    const warning = complexFeedback?.openai?.warning;
-    
-    console.log('[simplifyFeedback] Processing feedback with source:', source, '| Genuine LLM:', isGenuineLLM);
-    
     if (!analysis) {
-      // Return default feedback if analysis is missing
       return {
-        overall_score: calculateSimpleScore(speeches),
-        strengths: [
-          "You expressed your ideas clearly",
-          "You participated actively in the debate",
-          "You provided thoughtful arguments",
-          "Good effort for your first debate!"
-        ],
-        improvements: [
-          "Try using more specific examples and statistics",
-          "Build on the AI's points directly when disagreeing",
-          "Practice speaking at a steady pace",
-          "Add more logical connections between your points"
-        ],
-        source: source || 'UNKNOWN',
-        isGenuineLLM: false,
-        warning: warning
+        overall_score: Math.round(complexFeedback?.openai?.analysis?.overallScore || 0),
+        strengths: ["No analysis returned from the backend"],
+        improvements: ["Please try again after the backend finishes generating feedback"],
+        summary: "LLM analysis is unavailable right now.",
+        source: complexFeedback?.openai?.source || 'UNKNOWN',
+        isGenuineLLM: complexFeedback?.openai?.isGenuineLLM !== false,
+        warning: complexFeedback?.openai?.warning
       };
     }
 
-    // Extract score (convert 0-10 scale to ensure it's a number)
-    let score = 7; // Default
-    if (analysis.overall_score !== undefined) {
-      score = Math.round(analysis.overall_score);
-    } else if (analysis.score !== undefined) {
-      score = Math.round(analysis.score);
-    }
+    const normalizeList = (value) => {
+      if (Array.isArray(value)) return value.filter((item) => String(item).trim()).slice(0, 5);
+      if (typeof value === 'string') return value.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, 5);
+      return [];
+    };
 
-    // Extract strengths
-    let strengths = [];
-    if (Array.isArray(analysis.strengths)) {
-      strengths = analysis.strengths.slice(0, 5);
-    } else if (analysis.strengths && typeof analysis.strengths === 'object') {
-      strengths = Object.values(analysis.strengths).slice(0, 5);
-    } else if (typeof analysis.strengths === 'string') {
-      strengths = analysis.strengths.split('\n').filter(s => s.trim()).slice(0, 5);
-    }
-
-    // Extract improvements/recommendations
-    let improvements = [];
-    if (Array.isArray(analysis.recommendations)) {
-      improvements = analysis.recommendations.slice(0, 5);
-    } else if (Array.isArray(analysis.improvements)) {
-      improvements = analysis.improvements.slice(0, 5);
-    } else if (analysis.recommendations && typeof analysis.recommendations === 'object') {
-      improvements = Object.values(analysis.recommendations).slice(0, 5);
-    } else if (typeof analysis.recommendations === 'string') {
-      improvements = analysis.recommendations.split('\n').filter(i => i.trim()).slice(0, 5);
-    }
+    const strengths = normalizeList(analysis.strengths);
+    const weaknesses = normalizeList(analysis.weaknesses);
+    const improvements = normalizeList(analysis.recommendations || analysis.improvements);
+    const overallScore = Number.isFinite(Number(analysis.overallScore))
+      ? Number(analysis.overallScore)
+      : Number(analysis.overall_score) || 0;
 
     return {
-      overall_score: score,
-      strengths: strengths.length > 0 ? strengths : [
-        "You expressed your ideas clearly",
-        "You participated actively in the debate",
-        "Good effort in your debate performance!"
-      ],
-      improvements: improvements.length > 0 ? improvements : [
-        "Try using more specific examples and statistics",
-        "Build on the AI's points directly when disagreeing",
-        "Add more logical connections between your points"
-      ],
-      source: source || 'UNKNOWN',
-      isGenuineLLM: isGenuineLLM !== false ? true : false,
-      warning: warning
+      overall_score: overallScore,
+      summary: analysis.summary || analysis.overall_summary || "",
+      strengths,
+      weaknesses,
+      recommendations: improvements,
+      improvements,
+      source: complexFeedback?.openai?.source || 'UNKNOWN',
+      isGenuineLLM: complexFeedback?.openai?.isGenuineLLM !== false,
+      warning: complexFeedback?.openai?.warning,
+      strengths_paragraph: analysis.strengths_paragraph,
+      improvement_paragraph: analysis.improvement_paragraph
     };
   } catch (error) {
     console.error('[simplifyFeedback] Error simplifying feedback:', error);
     return {
-      overall_score: 7,
-      strengths: [
-        "You participated in the debate",
-        "You expressed your thoughts",
-        "Great effort!"
-      ],
-      improvements: [
-        "Use more specific examples",
-        "Practice regular debates to improve",
-        "Focus on logical arguments"
-      ],
+      overall_score: 0,
+      strengths: ["Unable to format LLM feedback"],
+      improvements: ["Try generating the result again"],
       source: 'ERROR',
-      isGenuineLLM: false
+      isGenuineLLM: false,
+      warning: error.message
     };
   }
-};
-
-// Calculate a simple score based on speeches
-const calculateSimpleScore = (speeches = []) => {
-  if (!speeches || speeches.length === 0) return 5;
-  
-  let score = 6;
-  
-  // Add points for number of speeches
-  if (speeches.length >= 3) score += 1;
-  if (speeches.length >= 5) score += 1;
-  
-  // Add points for average speech quality
-  const avgPoints = speeches.reduce((sum, s) => sum + (s.points || 0), 0) / speeches.length;
-  if (avgPoints > 25) score += 1;
-  if (avgPoints > 30) score += 1;
-  
-  return Math.min(10, score);
 };

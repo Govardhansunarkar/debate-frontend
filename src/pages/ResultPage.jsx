@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../services/socket";
 import FeedbackReport from "../components/FeedbackReport";
 import SimpleFeedback from "../components/SimpleFeedback";
-import { getDebateFeedback, simplifyFeedback, generateQuickFeedback, generatePerUserFeedback } from "../services/debateAnalysis";
+import { getDebateFeedback, simplifyFeedback, generatePerUserFeedback, trackDebateMetrics } from "../services/debateAnalysis";
 import { FiAlertTriangle, FiArrowRight, FiAward, FiBarChart2, FiCheckCircle, FiHome, FiMessageSquare, FiRefreshCw, FiTrendingUp, FiUsers } from "react-icons/fi";
 
 export default function ResultPage() {
@@ -34,73 +34,63 @@ export default function ResultPage() {
         const savedMetrics = localStorage.getItem(`debateMetrics_${debateId}`);
         const savedTopic = localStorage.getItem(`topic_${debateId}`);
         const savedRoomType = localStorage.getItem(`roomType_${debateId}`);
+        const isAIDebateTemp = savedRoomType === 'ai';
+        const parsedSpeeches = savedSpeeches ? JSON.parse(savedSpeeches) : [];
+        const userOnlySpeeches = parsedSpeeches.filter((speech) => speech?.speaker !== 'ai');
+        const analysisSpeeches = isAIDebateTemp ? userOnlySpeeches : parsedSpeeches;
 
         console.log('[ResultPage] LocalStorage data:', {
-          speeches: savedSpeeches ? JSON.parse(savedSpeeches).length : 0,
+          speeches: parsedSpeeches.length,
           metrics: !!savedMetrics,
           topic: savedTopic,
           roomType: savedRoomType
         });
 
-        // Check if this is an AI debate
-        const isAIDebateTemp = savedRoomType === 'ai';
-        const isUserOnlyDebate = savedRoomType === 'user-only';
-        
         if (isAIDebateTemp) {
           setIsAIDebate(true);
         }
 
-        if (savedSpeeches) {
-          const parsedSpeeches = JSON.parse(savedSpeeches);
+        if (parsedSpeeches.length > 0) {
           setSpeeches(parsedSpeeches);
 
-          // ⚡ SPEED: Show immediate quick feedback first, then fetch LLM analysis in background
-          if (parsedSpeeches.length > 2) {
-            setFetchingFeedback(true);
-            
-            // Show quick feedback immediately (instant)
-            const quickFeedback = generateQuickFeedback(parsedSpeeches);
-            setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
-            
-            // Then fetch real analysis in background with timeout
-            const feedbackTimeout = setTimeout(() => {
-              console.log('[ResultPage] ⏰ Feedback still loading after 5s, showing quick feedback...');
-              setFetchingFeedback(false);
-            }, 5000); // Max wait 5 seconds
-            
-            (async () => {
-              try {
-                console.log('[ResultPage] ⏳ Fetching PRIORITY AI analysis...');
-                const feedbackData = await getDebateFeedback(
-                  debateId,
-                  savedTopic || "General Debate",
-                  parsedSpeeches
-                );
-                
-                clearTimeout(feedbackTimeout);
-                
-                if (feedbackData?.success) {
-                  const simplifiedFeedback = simplifyFeedback(feedbackData, parsedSpeeches);
-                  setFeedback(simplifiedFeedback);
-                  console.log('[ResultPage] ✅ LLM feedback loaded successfully');
-                }
-              } catch (err) {
-                console.warn('[ResultPage] LLM analysis not available, using quick feedback:', err.message);
-              } finally {
-                setFetchingFeedback(false);
-              }
-            })();
-          } else {
-            // Very short debate - use quick feedback
-            const quickFeedback = generateQuickFeedback(parsedSpeeches);
-            setFeedback(simplifyFeedback(quickFeedback, parsedSpeeches));
+          if (analysisSpeeches.length > 0) {
+            setDebateMetrics(trackDebateMetrics(analysisSpeeches));
+          }
+
+          setFetchingFeedback(true);
+
+          try {
+            console.log('[ResultPage] ⏳ Fetching AI analysis...');
+            const feedbackData = await getDebateFeedback(
+              debateId,
+              savedTopic || "General Debate",
+              analysisSpeeches
+            );
+
+            if (feedbackData?.success) {
+              const simplifiedFeedback = simplifyFeedback(feedbackData, analysisSpeeches);
+              setFeedback(simplifiedFeedback);
+              console.log('[ResultPage] ✅ LLM feedback loaded successfully');
+            } else {
+              setFeedback(feedbackData);
+            }
+          } catch (err) {
+            console.warn('[ResultPage] LLM analysis failed:', err.message);
+            setFeedback({
+              success: false,
+              error: err.message,
+              userMessage: err.message,
+              isTimeout: false
+            });
+          } finally {
+            setFetchingFeedback(false);
           }
         } else {
           console.warn('[ResultPage] No speeches found in localStorage!');
         }
 
         if (savedMetrics) {
-          setDebateMetrics(JSON.parse(savedMetrics));
+          setDebateMetrics(isAIDebateTemp ? trackDebateMetrics(analysisSpeeches) : JSON.parse(savedMetrics));
         }
 
         if (savedTopic) {

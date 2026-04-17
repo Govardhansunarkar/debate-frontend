@@ -145,6 +145,18 @@ export default function DebateRoom() {
     setDebateMetrics(trackDebateMetrics(speeches));
   }, [speeches]);
 
+  useEffect(() => {
+    if (!debateId) return;
+
+    localStorage.setItem(`speeches_${debateId}`, JSON.stringify(speeches));
+    localStorage.setItem(`topic_${debateId}`, topic);
+    localStorage.setItem(`roomType_${debateId}`, roomType);
+
+    if (debateMetrics) {
+      localStorage.setItem(`debateMetrics_${debateId}`, JSON.stringify(debateMetrics));
+    }
+  }, [debateId, speeches, topic, roomType, debateMetrics]);
+
   const handleStart = () => {
     setIsActive(true);
     setTimer(300);
@@ -184,11 +196,6 @@ export default function DebateRoom() {
     stopSpeech();
     setIsActive(false);
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    if (speeches?.length > 0) localStorage.setItem(`speeches_${debateId}`, JSON.stringify(speeches));
-    if (debateMetrics) localStorage.setItem(`debateMetrics_${debateId}`, JSON.stringify(debateMetrics));
-    localStorage.setItem(`topic_${debateId}`, topic);
-    localStorage.setItem(`roomType_${debateId}`, roomType);
     
     socket.emit("end-debate", { debateId });
     if (debateId && !debateId.startsWith('debate_')) await endDebate(debateId);

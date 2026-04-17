@@ -53,6 +53,8 @@ export const getAIResponse = async (userSpeech, topic, debateContext, speechMeta
   } catch (error) {
     console.error("[aiDebateService] ERROR - Full error object:", error);
     console.error("[aiDebateService] Error message:", error.message);
+    const backendError = error.response?.data?.error;
+    const backendDetails = error.response?.data?.details;
     if (error.response) {
       console.error("[aiDebateService] Error response status:", error.response.status);
       console.error("[aiDebateService] Error response data:", error.response.data);
@@ -62,8 +64,9 @@ export const getAIResponse = async (userSpeech, topic, debateContext, speechMeta
     
     return {
       success: false,
-      error: error.message,
-      response: "Sorry, I couldn't generate a response. Please try again."
+      error: backendError || error.message,
+      details: backendDetails,
+      statusCode: error.response?.status
     };
   }
 };
